@@ -182,10 +182,21 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       z-index: 200;
     }
-    #comment-container h3 {
-      margin: 0 0 10px 0;
-      text-align: center;
+    /* 댓글 헤더 스타일 (제목과 접기 버튼 포함) */
+    #comment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    #comment-header h3 {
+      margin: 0;
       font-size: 1.1rem;
+    }
+    #toggle-comments {
+      padding: 2px 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
     }
     #comment-messages {
       max-height: 200px;
@@ -544,12 +555,30 @@
       set(newCommentRef, { message, timestamp: Date.now() });
       input.value = "";
     });
+
+    // 댓글 접기/펼치기 기능
+    document.getElementById('toggle-comments').addEventListener('click', function() {
+      const messages = document.getElementById('comment-messages');
+      const form = document.getElementById('comment-form');
+      if (messages.style.display === "none") {
+        messages.style.display = "block";
+        form.style.display = "flex";
+        this.textContent = "접기";
+      } else {
+        messages.style.display = "none";
+        form.style.display = "none";
+        this.textContent = "펼치기";
+      }
+    });
   </script>
 </head>
 <body>
   <!-- 좌측 하단 플로팅 댓글(채팅) 영역 -->
   <div id="comment-container">
-    <h3>댓글</h3>
+    <div id="comment-header">
+      <h3>댓글</h3>
+      <button id="toggle-comments">접기</button>
+    </div>
     <div id="comment-messages">
       <!-- 댓글 메시지가 표시됩니다 -->
     </div>
@@ -572,6 +601,46 @@
   </form>
   <script>
     // (댓글 등록 기능은 위의 스크립트 내에서 처리됩니다.)
+    // 댓글창 드래그 이동 기능 추가 (마우스 및 터치 이벤트)
+const commentContainer = document.getElementById('comment-container');
+const commentHeader = document.getElementById('comment-header');
+commentHeader.style.cursor = "move";
+
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+
+function startDrag(e) {
+  isDragging = true;
+  // 드래그 시작 시 bottom 속성 초기화
+  commentContainer.style.bottom = "auto";
+  
+  const rect = commentContainer.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  dragOffset.x = clientX - rect.left;
+  dragOffset.y = clientY - rect.top;
+}
+
+function duringDrag(e) {
+  if (!isDragging) return;
+  e.preventDefault();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  commentContainer.style.left = (clientX - dragOffset.x) + "px";
+  commentContainer.style.top = (clientY - dragOffset.y) + "px";
+}
+
+function endDrag() {
+  isDragging = false;
+}
+
+commentHeader.addEventListener("mousedown", startDrag);
+document.addEventListener("mousemove", duringDrag);
+document.addEventListener("mouseup", endDrag);
+
+commentHeader.addEventListener("touchstart", startDrag);
+document.addEventListener("touchmove", duringDrag, {passive: false});
+document.addEventListener("touchend", endDrag);
   </script>
 </body>
 </html>
