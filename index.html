@@ -329,6 +329,74 @@
       remarkInput.value = "";
     });
 
+    // 컨텍스트 메뉴 표시 함수 (수정/삭제 버튼)
+    function showContextMenu(e, li) {
+      e.preventDefault();
+      const existingMenu = li.querySelector('.context-menu');
+      if(existingMenu) return;
+
+      const menu = document.createElement('div');
+      menu.className = 'context-menu';
+      // 터치 이벤트인 경우 터치 좌표를 사용
+      const offsetX = e.touches ? e.touches[0].clientX - li.getBoundingClientRect().left : e.offsetX;
+      const offsetY = e.touches ? e.touches[0].clientY - li.getBoundingClientRect().top : e.offsetY;
+      menu.style.top = offsetY + 'px';
+      menu.style.left = offsetX + 'px';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.textContent = '수정';
+      editBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        editingKey = li.dataset.key;
+        editingLi = li;
+        const yearSection = li.closest('.timeline-year');
+        if(yearSection) {
+          yearInput.value = yearSection.dataset.year;
+        }
+        const monthSpan = li.querySelector('.event-month');
+        monthInput.value = monthSpan ? monthSpan.textContent.replace("월", "").trim() : "";
+        const eventSpan = li.querySelector('.event-info span:not(.event-month)');
+        if(eventSpan) {
+          eventInput.value = eventSpan.textContent;
+        }
+        const rSpan = li.querySelector('.event-remark');
+        remarkInput.value = rSpan ? rSpan.textContent : "";
+        document.querySelector('#timeline-form button').textContent = '수정';
+        menu.remove();
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.textContent = '삭제';
+      deleteBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        remove(ref(db, `timelineItems/${li.dataset.key}`))
+          .then(() => {
+            li.remove();
+            const ul = li.parentElement;
+            if (ul.children.length === 0) {
+              ul.parentElement.remove();
+            }
+          })
+          .catch((error) => {
+            console.error("삭제 실패:", error);
+          });
+        menu.remove();
+      });
+
+      menu.appendChild(editBtn);
+      menu.appendChild(deleteBtn);
+      li.appendChild(menu);
+
+      document.addEventListener('click', function handler() {
+        if(menu.parentElement) {
+          menu.remove();
+        }
+        document.removeEventListener('click', handler);
+      });
+    }
+
     // 타임라인 항목 추가 함수 (드래그앤드롭 및 컨텍스트 메뉴: 수정/삭제)
     function addTimelineItem(year, month, text, remark, dbKey) {
       let yearSection = document.querySelector(`.timeline-year[data-year="${year}"]`);
@@ -383,78 +451,29 @@
       li.appendChild(remarkSpan);
       ul.appendChild(li);
 
-      // 우클릭 시 컨텍스트 메뉴(수정/삭제) 표시
+      // 데스크탑: 마우스 우클릭으로 컨텍스트 메뉴 표시
       li.addEventListener('contextmenu', function(e) {
         e.preventDefault();
-        const existingMenu = li.querySelector('.context-menu');
-        if(existingMenu) return;
-
-        const menu = document.createElement('div');
-        menu.className = 'context-menu';
-        menu.style.top = e.offsetY + 'px';
-        menu.style.left = e.offsetX + 'px';
-
-        const editBtn = document.createElement('button');
-        editBtn.className = 'edit-btn';
-        editBtn.textContent = '수정';
-        editBtn.addEventListener('click', function(ev) {
-          ev.stopPropagation();
-          // 수정 모드: 입력폼에 해당 항목 데이터를 채워넣음
-          editingKey = li.dataset.key;
-          editingLi = li;
-          const yearSection = li.closest('.timeline-year');
-          if(yearSection) {
-            yearInput.value = yearSection.dataset.year;
-          }
-          const monthSpan = li.querySelector('.event-month');
-          if(monthSpan) {
-            monthInput.value = monthSpan.textContent.replace("월", "").trim();
-          } else {
-            monthInput.value = "";
-          }
-          // event-input: event-month 제외
-          const eventSpan = li.querySelector('.event-info span:not(.event-month)');
-          if(eventSpan) {
-            eventInput.value = eventSpan.textContent;
-          }
-          const rSpan = li.querySelector('.event-remark');
-          remarkInput.value = rSpan ? rSpan.textContent : "";
-          document.querySelector('#timeline-form button').textContent = '수정';
-          menu.remove();
-        });
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = '삭제';
-        deleteBtn.addEventListener('click', function(ev) {
-          ev.stopPropagation();
-          remove(ref(db, `timelineItems/${li.dataset.key}`))
-            .then(() => {
-              li.remove();
-              const ul = li.parentElement;
-              if (ul.children.length === 0) {
-                ul.parentElement.remove();
-              }
-            })
-            .catch((error) => {
-              console.error("삭제 실패:", error);
-            });
-          menu.remove();
-        });
-
-        menu.appendChild(editBtn);
-        menu.appendChild(deleteBtn);
-        li.appendChild(menu);
-
-        document.addEventListener('click', function handler() {
-          if(menu.parentElement) {
-            menu.remove();
-          }
-          document.removeEventListener('click', handler);
-        });
+        showContextMenu(e, li);
       });
 
-      // 드래그앤드롭 이벤트 등록 (마우스)
+      // 모바일: 롱프레스(꾹 누르기)로 컨텍스트 메뉴 표시
+      li.addEventListener('touchstart', function(e) {
+        // 타이머를 설정해서 600ms 이상 눌렀을 때 컨텍스트 메뉴 표시
+        const longPressTimer = setTimeout(() => {
+          showContextMenu(e, li);
+        }, 600);
+        // 터치 종료나 움직임 시 타이머 취소
+        const cancel = () => {
+          clearTimeout(longPressTimer);
+          li.removeEventListener('touchend', cancel);
+          li.removeEventListener('touchmove', cancel);
+        };
+        li.addEventListener('touchend', cancel);
+        li.addEventListener('touchmove', cancel);
+      });
+
+      // 데스크탑 드래그 앤 드롭 처리
       li.addEventListener('mousedown', function(e) {
         if (e.target.closest('.context-menu')) return;
         draggingItem = this;
@@ -473,7 +492,7 @@
         document.addEventListener("mouseup", onMouseUp);
         e.preventDefault();
       });
-      // 드래그앤드롭 이벤트 등록 (터치)
+      // 모바일 드래그(터치) 처리 (타임라인 항목은 롱프레스만 사용하므로 터치드래그 기능은 그대로 등록)
       li.addEventListener('touchstart', function(e) {
         if (e.target.closest('.context-menu')) return;
         draggingItem = this;
@@ -621,7 +640,7 @@
       }
     });
 
-    // 댓글창 드래그 이동 기능 (마우스 및 터치 이벤트)
+    // 댓글창 드래그 이동 기능 (마우스 및 터치 이벤트) - 댓글창은 그대로 유지
     const commentContainer = document.getElementById('comment-container');
     const commentHeader = document.getElementById('comment-header');
     commentHeader.style.cursor = "move";
