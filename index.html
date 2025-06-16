@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>연표 정리</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: #ffffff;
+      padding-top: 60px; /* 헤더 공간 확보 */
+    }
+    /* 헤더 – 중앙 정렬 (밑 선 제거) */
+    header {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      background: #ffffff;
+      text-align: center;
+      padding: 10px 0;
+      z-index: 100;
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    /* 타임라인 영역 – 중앙 정렬 */
+    #timeline-container {
+      max-width: 600px;
+      margin: 20px auto 140px auto; /* 하단 여유 */
+      padding: 0 20px;
+    }
+    .timeline-year {
+      margin-bottom: 30px;
+    }
+    .timeline-year h2 {
+      margin-bottom: 10px;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 5px;
+    }
+    .timeline-year ul {
+      list-style: none;
+      padding: 0;
+      position: relative;
+    }
+    .timeline-year li {
+      display: flex;
+      align-items: center;
+      background: white;
+      padding: 12px 15px;
+      margin-bottom: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: move;
+      position: relative; /* 컨텍스트 메뉴 기준 */
+    }
+    .placeholder {
+      margin-bottom: 8px;
+      visibility: hidden;
+    }
+    .event-info {
+      flex: 2;
+      display: flex;
+      align-items: center;
+    }
+    .event-month {
+      font-size: 0.8rem;
+      color: gray;
+      margin-right: 5px;
+    }
+    .event-remark {
+      flex: 1;
+      font-size: 0.8rem;
+      color: #555;
+      text-align: left;
+      padding-left: 20px;
+      border-left: 1px solid #ddd;
+      min-width: 100px;
+    }
+    /* 타임라인 입력폼 – 중앙 하단 플로팅 */
+    #timeline-form {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #ffffff;
+      border: 1px solid #aaa;
+      border-radius: 24px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 200;
+    }
+    #timeline-form input {
+      padding: 10px;
+      border-radius: 24px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      outline: none;
+    }
+    #timeline-form input[type="number"] {
+      width: 90px;
+    }
+    #month-input {
+      width: 70px;
+    }
+    #timeline-form input[type="text"] {
+      flex: 2;
+      min-width: 250px;
+    }
+    #remark-input {
+      width: 150px;
+    }
+    #timeline-form button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      background: #3498db;
+      color: white;
+      cursor: pointer;
+      border-radius: 24px;
+      transition: background 0.3s;
+    }
+    #timeline-form button:hover {
+      background: #2980b9;
+    }
+    /* PDF 저장 버튼 – 오른쪽 상단 */
+    #save-pdf {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      background: #3498db;
+      color: white;
+      cursor: pointer;
+      border-radius: 24px;
+      transition: background 0.3s;
+      z-index: 200;
+    }
+    #save-pdf:hover {
+      background: #2980b9;
+    }
+    /* 컨텍스트 메뉴 스타일 */
+    .context-menu {
+      position: absolute;
+      display: flex;
+      gap: 4px;
+      z-index: 1100;
+    }
+    .context-menu button {
+      padding: 4px 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .edit-btn {
+      background: #27ae60;
+      color: white;
+    }
+    .delete-btn {
+      background: red;
+      color: white;
+    }
+    /* 댓글(채팅) 영역 – 플로팅, 좌측 하단 (너비 250px로 조정) */
+    #comment-container {
+      position: fixed;
+      bottom: 140px;
+      left: 20px;
+      width: 250px;
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      z-index: 200;
+    }
+    #comment-container h3 {
+      margin: 0 0 10px 0;
+      text-align: center;
+      font-size: 1.1rem;
+    }
+    #comment-messages {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 5px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+    }
+    #comment-form {
+      display: flex;
+    }
+    #comment-form input {
+      flex: 1;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    #comment-form button {
+      padding: 5px 10px;
+      margin-left: 5px;
+      border: none;
+      background: #3498db;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+  </style>
+  <!-- html2canvas 및 jsPDF 라이브러리 추가 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { getDatabase, ref, push, set, onChildAdded, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAVPD6hJVl4vqJac24cLzI-B3ToGLKinfI",
+      authDomain: "waterdragon-499c9.firebaseapp.com",
+      databaseURL: "https://waterdragon-499c9-default-rtdb.firebaseio.com",
+      projectId: "waterdragon-499c9",
+      storageBucket: "waterdragon-499c9.firebasestorage.app",
+      messagingSenderId: "756466741361",
+      appId: "1:756466741361:web:02c489c252763a6d3eebd0",
+      measurementId: "G-NTWZSEJBWZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getDatabase(app);
+
+    // 수정 모드 관련 전역 변수
+    let editingKey = null;
+    let editingLi = null;
+
+    let draggingItem = null;
+    let placeholder = null;
+    let offsetX = 0, offsetY = 0;
+
+    const timelineForm = document.getElementById('timeline-form');
+    const yearInput = document.getElementById('year-input');
+    const monthInput = document.getElementById('month-input');
+    const eventInput = document.getElementById('event-input');
+    const remarkInput = document.getElementById('remark-input');
+    const timelineContainer = document.getElementById('timeline-container');
+
+    const timelineRef = ref(db, 'timelineItems');
+    // 댓글용 Firebase 경로 추가
+    const commentsRef = ref(db, 'comments');
+
+    // 타임라인 항목 렌더링
+    onChildAdded(timelineRef, (snapshot) => {
+      const item = snapshot.val();
+      addTimelineItem(item.year, item.month, item.event, item.remark, snapshot.key);
+    });
+
+    // 댓글 항목 렌더링 (댓글 삭제 기능 포함)
+    onChildAdded(commentsRef, (snapshot) => {
+      const comment = snapshot.val();
+      addComment(snapshot.key, comment.message);
+    });
+
+    timelineForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      const year = yearInput.value.trim();
+      const month = monthInput.value.trim();
+      const eventText = eventInput.value.trim();
+      const remarkText = remarkInput.value.trim();
+      if (!year || !eventText) return;
+
+      const yearNum = parseInt(year, 10);
+      const monthNum = month ? parseInt(month, 10) : '';
+
+      if (editingKey) {
+        // 수정 모드: Firebase 업데이트 및 UI 업데이트
+        update(ref(db, `timelineItems/${editingKey}`), {
+          year: yearNum,
+          month: monthNum,
+          event: eventText,
+          remark: remarkText,
+          timestamp: Date.now()
+        });
+        if (editingLi) {
+          const eventSpan = editingLi.querySelector('.event-info span:not(.event-month)');
+          const remarkSpan = editingLi.querySelector('.event-remark');
+          if(eventSpan) eventSpan.textContent = eventText;
+          if(remarkSpan) remarkSpan.textContent = remarkText;
+        }
+        editingKey = null;
+        editingLi = null;
+        document.querySelector('#timeline-form button').textContent = '추가';
+      } else {
+        // 신규 항목 추가
+        const newItemRef = push(timelineRef);
+        set(newItemRef, {
+          year: yearNum,
+          month: monthNum,
+          event: eventText,
+          remark: remarkText,
+          timestamp: Date.now()
+        });
+      }
+
+      yearInput.value = "";
+      monthInput.value = "";
+      eventInput.value = "";
+      remarkInput.value = "";
+    });
+
+    // 타임라인 항목 추가 함수 (드래그앤드롭 및 컨텍스트 메뉴: 수정/삭제)
+    function addTimelineItem(year, month, text, remark, dbKey) {
+      let yearSection = document.querySelector(`.timeline-year[data-year="${year}"]`);
+      if (!yearSection) {
+        yearSection = document.createElement('div');
+        yearSection.classList.add('timeline-year');
+        yearSection.setAttribute('data-year', year);
+
+        const heading = document.createElement('h2');
+        heading.textContent = `${year}년`;
+        yearSection.appendChild(heading);
+
+        const ul = document.createElement('ul');
+        yearSection.appendChild(ul);
+
+        const sections = Array.from(timelineContainer.querySelectorAll('.timeline-year'));
+        let inserted = false;
+        for (const section of sections) {
+          const sectionYear = parseInt(section.getAttribute('data-year'), 10);
+          if (sectionYear > year) {
+            timelineContainer.insertBefore(yearSection, section);
+            inserted = true;
+            break;
+          }
+        }
+        if (!inserted) {
+          timelineContainer.appendChild(yearSection);
+        }
+      }
+
+      const ul = yearSection.querySelector('ul');
+      const li = document.createElement('li');
+      li.dataset.key = dbKey;
+
+      const leftDiv = document.createElement('div');
+      leftDiv.classList.add('event-info');
+      if (month !== "") {
+        const monthSpan = document.createElement('span');
+        monthSpan.classList.add('event-month');
+        monthSpan.textContent = `${month}월 `;
+        leftDiv.appendChild(monthSpan);
+      }
+      const textSpan = document.createElement('span');
+      textSpan.textContent = text;
+      leftDiv.appendChild(textSpan);
+
+      const remarkSpan = document.createElement('span');
+      remarkSpan.classList.add('event-remark');
+      remarkSpan.textContent = remark;
+
+      li.appendChild(leftDiv);
+      li.appendChild(remarkSpan);
+      ul.appendChild(li);
+
+      // 우클릭 시 컨텍스트 메뉴(수정/삭제) 표시
+      li.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        const existingMenu = li.querySelector('.context-menu');
+        if(existingMenu) return;
+
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.style.top = e.offsetY + 'px';
+        menu.style.left = e.offsetX + 'px';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = '수정';
+        editBtn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          // 수정 모드: 입력폼에 해당 항목 데이터를 채워넣음
+          editingKey = li.dataset.key;
+          editingLi = li;
+          const yearSection = li.closest('.timeline-year');
+          if(yearSection) {
+            yearInput.value = yearSection.dataset.year;
+          }
+          const monthSpan = li.querySelector('.event-month');
+          if(monthSpan) {
+            monthInput.value = monthSpan.textContent.replace("월", "").trim();
+          } else {
+            monthInput.value = "";
+          }
+          // event-input: event-month 제외
+          const eventSpan = li.querySelector('.event-info span:not(.event-month)');
+          if(eventSpan) {
+            eventInput.value = eventSpan.textContent;
+          }
+          const rSpan = li.querySelector('.event-remark');
+          remarkInput.value = rSpan ? rSpan.textContent : "";
+          document.querySelector('#timeline-form button').textContent = '수정';
+          menu.remove();
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = '삭제';
+        deleteBtn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          remove(ref(db, `timelineItems/${li.dataset.key}`))
+            .then(() => {
+              li.remove();
+              const ul = li.parentElement;
+              if (ul.children.length === 0) {
+                ul.parentElement.remove();
+              }
+            })
+            .catch((error) => {
+              console.error("삭제 실패:", error);
+            });
+          menu.remove();
+        });
+
+        menu.appendChild(editBtn);
+        menu.appendChild(deleteBtn);
+        li.appendChild(menu);
+
+        document.addEventListener('click', function handler() {
+          if(menu.parentElement) {
+            menu.remove();
+          }
+          document.removeEventListener('click', handler);
+        });
+      });
+
+      // 드래그앤드롭 이벤트 등록
+      li.addEventListener('mousedown', function(e) {
+        if (e.target.closest('.context-menu')) return;
+        draggingItem = this;
+        const rect = this.getBoundingClientRect();
+        const parentRect = this.parentElement.getBoundingClientRect();
+        offsetX = e.pageX - (rect.left + window.pageXOffset);
+        offsetY = e.pageY - (rect.top + window.pageYOffset);
+        placeholder = document.createElement('li');
+        placeholder.classList.add('placeholder');
+        placeholder.style.height = rect.height + "px";
+        this.parentElement.insertBefore(placeholder, this.nextSibling);
+        this.style.position = "absolute";
+        this.style.zIndex = "1000";
+        moveAt(e.pageX, e.pageY);
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+        e.preventDefault();
+      });
+
+      function moveAt(pageX, pageY) {
+        const parentRect = placeholder.parentElement.getBoundingClientRect();
+        draggingItem.style.left = (pageX - offsetX - parentRect.left - window.pageXOffset) + "px";
+        draggingItem.style.top = (pageY - offsetY - parentRect.top - window.pageYOffset) + "px";
+      }
+
+      function onMouseMove(e) {
+        moveAt(e.pageX, e.pageY);
+        const parent = placeholder.parentElement;
+        const siblings = Array.from(parent.children).filter(child => child !== draggingItem && child !== placeholder);
+        for (const sibling of siblings) {
+          const siblingRect = sibling.getBoundingClientRect();
+          const siblingCenter = siblingRect.top + siblingRect.height / 2;
+          if (e.clientY < siblingCenter) {
+            parent.insertBefore(placeholder, sibling);
+            break;
+          } else {
+            parent.appendChild(placeholder);
+          }
+        }
+      }
+
+      function onMouseUp(e) {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        draggingItem.style.position = "";
+        draggingItem.style.zIndex = "";
+        draggingItem.style.left = "";
+        draggingItem.style.top = "";
+        placeholder.parentElement.insertBefore(draggingItem, placeholder);
+        placeholder.remove();
+        draggingItem = null;
+      }
+    }
+
+    document.getElementById("save-pdf").addEventListener("click", function() {
+      html2canvas(document.getElementById("timeline-container")).then(function(canvas) {
+        const imgData = canvas.toDataURL("image/png");
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF("p", "pt", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save("timeline.pdf");
+      });
+    });
+
+    // 댓글(채팅) 등록 및 Firebase 저장, 댓글 삭제 기능 포함
+    function addComment(key, message) {
+      const msgDiv = document.createElement('div');
+      msgDiv.textContent = message;
+      msgDiv.style.borderBottom = "1px solid #ccc";
+      msgDiv.style.padding = "4px 0";
+      // 삭제 버튼 생성
+      const delBtn = document.createElement('button');
+      delBtn.textContent = "삭제";
+      delBtn.style.marginLeft = "10px";
+      delBtn.style.fontSize = "0.8rem";
+      delBtn.addEventListener('click', function() {
+        remove(ref(db, `comments/${key}`))
+          .then(() => {
+            msgDiv.remove();
+          })
+          .catch(error => {
+            console.error("댓글 삭제 실패:", error);
+          });
+      });
+      msgDiv.appendChild(delBtn);
+      document.getElementById('comment-messages').appendChild(msgDiv);
+    }
+    
+    document.getElementById('comment-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const input = document.getElementById('comment-input');
+      const message = input.value.trim();
+      if (!message) return;
+      // Firebase에 댓글 저장
+      const newCommentRef = push(commentsRef);
+      set(newCommentRef, { message, timestamp: Date.now() });
+      input.value = "";
+    });
+  </script>
+</head>
+<body>
+  <!-- 좌측 하단 플로팅 댓글(채팅) 영역 -->
+  <div id="comment-container">
+    <h3>댓글</h3>
+    <div id="comment-messages">
+      <!-- 댓글 메시지가 표시됩니다 -->
+    </div>
+    <form id="comment-form">
+      <input type="text" id="comment-input" placeholder="댓글을 입력하세요..." autocomplete="off">
+      <button type="submit">등록</button>
+    </form>
+  </div>
+  <header>현세 연표 정리</header>
+  <div id="timeline-container">
+    <!-- 연도별 섹션이 추가됩니다 -->
+  </div>
+  <button id="save-pdf">전체 연표 PDF로 저장</button>
+  <form id="timeline-form">
+    <input type="number" id="year-input" placeholder="연도" min="0" required oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    <input type="number" id="month-input" placeholder="월" min="1" max="12" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    <input type="text" id="event-input" placeholder="사건 입력" autocomplete="off" required>
+    <input type="text" id="remark-input" placeholder="비고(설명)" autocomplete="off">
+    <button type="submit">추가</button>
+  </form>
+  <script>
+    // (댓글 등록 기능은 위의 스크립트 내에서 처리됩니다.)
+  </script>
+</body>
+</html>
