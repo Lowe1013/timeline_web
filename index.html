@@ -25,6 +25,40 @@
       font-size: 1.8rem;
       font-weight: bold;
     }
+    /* 미니게임 영역: 헤더 바로 아래 */
+    #mini-game {
+      margin: 80px auto 20px auto;
+      max-width: 600px;
+      padding: 20px;
+      border: 2px solid #3498db;
+      border-radius: 8px;
+      background: #f0f8ff;
+      text-align: center;
+      z-index: 150;
+      position: relative;
+    }
+    #mini-game h2 {
+      margin-bottom: 10px;
+    }
+    #game-event {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+    #start-game {
+      margin-top: 20px; /* 원하는 만큼 조절 */
+    }
+    #game-options button {
+      margin: 5px;
+      padding: 8px 12px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #game-feedback {
+      margin-top: 10px;
+      font-weight: bold;
+    }
     /* 타임라인 영역 – 중앙 정렬 */
     #timeline-container {
       max-width: 600px;
@@ -251,6 +285,9 @@
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
 
+    // 전역 배열: 타임라인에 추가된 사건을 저장 (미니게임에 사용)
+    let timelineEvents = [];
+
     // 수정 모드 관련 전역 변수
     let editingKey = null;
     let editingLi = null;
@@ -308,6 +345,8 @@
           if(eventSpan) eventSpan.textContent = eventText;
           if(remarkSpan) remarkSpan.textContent = remarkText;
         }
+        // 업데이트된 내용으로 전역 배열의 값도 교체 (간단하게 전체 배열 재구성)
+        timelineEvents = timelineEvents.map(item => item.event === eventInput.value ? { event: eventText, year: yearNum } : item);
         editingKey = null;
         editingLi = null;
         document.querySelector('#timeline-form button').textContent = '추가';
@@ -337,7 +376,7 @@
 
       const menu = document.createElement('div');
       menu.className = 'context-menu';
-      // 터치 이벤트인 경우 터치 좌표를 사용
+      // 터치 이벤트인 경우 터치 좌표 사용
       const offsetX = e.touches ? e.touches[0].clientX - li.getBoundingClientRect().left : e.offsetX;
       const offsetY = e.touches ? e.touches[0].clientY - li.getBoundingClientRect().top : e.offsetY;
       menu.style.top = offsetY + 'px';
@@ -378,6 +417,8 @@
             if (ul.children.length === 0) {
               ul.parentElement.remove();
             }
+            // 배열에서도 해당 항목 제거 (여기서는 사건 텍스트를 기준으로 제거)
+            timelineEvents = timelineEvents.filter(item => item.event !== li.querySelector('.event-info span:not(.event-month)').textContent);
           })
           .catch((error) => {
             console.error("삭제 실패:", error);
@@ -451,19 +492,20 @@
       li.appendChild(remarkSpan);
       ul.appendChild(li);
 
+      // ★ 타임라인에 추가된 사건을 전역 배열에 저장 (미니게임에 사용)
+      timelineEvents.push({ event: text, year: year });
+
       // 데스크탑: 마우스 우클릭으로 컨텍스트 메뉴 표시
       li.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         showContextMenu(e, li);
       });
 
-      // 모바일: 롱프레스(꾹 누르기)로 컨텍스트 메뉴 표시
+      // 모바일: 롱프레스(꽉 누르기)로 컨텍스트 메뉴 표시
       li.addEventListener('touchstart', function(e) {
-        // 타이머를 설정해서 600ms 이상 눌렀을 때 컨텍스트 메뉴 표시
         const longPressTimer = setTimeout(() => {
           showContextMenu(e, li);
         }, 600);
-        // 터치 종료나 움직임 시 타이머 취소
         const cancel = () => {
           clearTimeout(longPressTimer);
           li.removeEventListener('touchend', cancel);
@@ -492,7 +534,26 @@
         document.addEventListener("mouseup", onMouseUp);
         e.preventDefault();
       });
-      
+      // 모바일 드래그(터치) 처리 – 미니게임용 타임라인은 롱프레스만 사용
+      li.addEventListener('touchstart', function(e) {
+        if (e.target.closest('.context-menu')) return;
+        draggingItem = this;
+        const rect = this.getBoundingClientRect();
+        const parentRect = this.parentElement.getBoundingClientRect();
+        offsetX = e.touches[0].pageX - (rect.left + window.pageXOffset);
+        offsetY = e.touches[0].pageY - (rect.top + window.pageYOffset);
+        placeholder = document.createElement('li');
+        placeholder.classList.add('placeholder');
+        placeholder.style.height = rect.height + "px";
+        this.parentElement.insertBefore(placeholder, this.nextSibling);
+        this.style.position = "absolute";
+        this.style.zIndex = "1000";
+        moveAt(e.touches[0].pageX, e.touches[0].pageY);
+        document.addEventListener("touchmove", onTouchMove, {passive: false});
+        document.addEventListener("touchend", onTouchEnd);
+        e.preventDefault();
+      });
+
       function moveAt(pageX, pageY) {
         const parentRect = placeholder.parentElement.getBoundingClientRect();
         draggingItem.style.left = (pageX - offsetX - parentRect.left - window.pageXOffset) + "px";
@@ -661,6 +722,61 @@
     commentHeader.addEventListener("touchstart", startDrag);
     document.addEventListener("touchmove", duringDrag, {passive: false});
     document.addEventListener("touchend", endDrag);
+
+    // 미니게임 기능: 타임라인에 등록된 사건을 사용해서 "사건의 연도 맞추기" 게임
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function startMiniGame() {
+      if(timelineEvents.length === 0) {
+        document.getElementById("game-event").textContent = "등록된 사건이 없습니다.";
+        document.getElementById("game-options").innerHTML = "";
+        document.getElementById("game-feedback").textContent = "";
+        return;
+      }
+      // 무작위 사건 선택
+      const randomIndex = Math.floor(Math.random() * timelineEvents.length);
+      const currentEvent = timelineEvents[randomIndex];
+      document.getElementById("game-event").textContent = `"${currentEvent.event}" 사건의 연도는?`;
+
+      // 타임라인에 등록된 사건에서 모든 연도 추출(중복 제거)
+      const allYears = Array.from(new Set(timelineEvents.map(item => item.year)));
+      // 올바른 연도가 포함된 4개 옵션 선택
+      let options;
+      if(allYears.length <= 4) {
+        options = allYears.slice();
+      } else {
+        options = allYears.filter(year => year !== currentEvent.year);
+        options = shuffle(options).slice(0, 3);
+        options.push(currentEvent.year);
+      }
+      options = shuffle(options);
+
+      // 옵션 버튼 생성
+      const optionsContainer = document.getElementById("game-options");
+      optionsContainer.innerHTML = "";
+      options.forEach(year => {
+        const btn = document.createElement("button");
+        btn.textContent = year;
+        btn.addEventListener("click", () => {
+          if(year === currentEvent.year) {
+            document.getElementById("game-feedback").textContent = "정답";
+          } else {
+            document.getElementById("game-feedback").textContent = "오답ㅋ " + currentEvent.year + "년임 공부 더 해라";
+          }
+        });
+        optionsContainer.appendChild(btn);
+      });
+      // 피드백 초기화
+      document.getElementById("game-feedback").textContent = "";
+    }
+
+    document.getElementById("start-game").addEventListener("click", startMiniGame);
   </script>
 </head>
 <body>
@@ -679,6 +795,13 @@
     </form>
   </div>
   <header>현세 연표 정리</header>
+  <div id="mini-game">
+    <h2>미니 게임: 사건의 연도 맞추기</h2>
+    <div id="game-event"></div>
+    <div id="game-options"></div>
+    <div id="game-feedback"></div>
+    <button id="start-game">다음</button>
+  </div>
   <div id="timeline-container">
     <!-- 연도별 섹션이 추가됩니다 -->
   </div>
