@@ -492,26 +492,7 @@
         document.addEventListener("mouseup", onMouseUp);
         e.preventDefault();
       });
-      // 모바일 드래그(터치) 처리 (타임라인 항목은 롱프레스만 사용하므로 터치드래그 기능은 그대로 등록)
-      li.addEventListener('touchstart', function(e) {
-        if (e.target.closest('.context-menu')) return;
-        draggingItem = this;
-        const rect = this.getBoundingClientRect();
-        const parentRect = this.parentElement.getBoundingClientRect();
-        offsetX = e.touches[0].pageX - (rect.left + window.pageXOffset);
-        offsetY = e.touches[0].pageY - (rect.top + window.pageYOffset);
-        placeholder = document.createElement('li');
-        placeholder.classList.add('placeholder');
-        placeholder.style.height = rect.height + "px";
-        this.parentElement.insertBefore(placeholder, this.nextSibling);
-        this.style.position = "absolute";
-        this.style.zIndex = "1000";
-        moveAt(e.touches[0].pageX, e.touches[0].pageY);
-        document.addEventListener("touchmove", onTouchMove, {passive: false});
-        document.addEventListener("touchend", onTouchEnd);
-        e.preventDefault();
-      });
-
+      
       function moveAt(pageX, pageY) {
         const parentRect = placeholder.parentElement.getBoundingClientRect();
         draggingItem.style.left = (pageX - offsetX - parentRect.left - window.pageXOffset) + "px";
