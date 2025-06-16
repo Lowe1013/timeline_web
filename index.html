@@ -454,7 +454,7 @@
         });
       });
 
-      // 드래그앤드롭 이벤트 등록
+      // 드래그앤드롭 이벤트 등록 (마우스)
       li.addEventListener('mousedown', function(e) {
         if (e.target.closest('.context-menu')) return;
         draggingItem = this;
@@ -471,6 +471,25 @@
         moveAt(e.pageX, e.pageY);
         document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("mouseup", onMouseUp);
+        e.preventDefault();
+      });
+      // 드래그앤드롭 이벤트 등록 (터치)
+      li.addEventListener('touchstart', function(e) {
+        if (e.target.closest('.context-menu')) return;
+        draggingItem = this;
+        const rect = this.getBoundingClientRect();
+        const parentRect = this.parentElement.getBoundingClientRect();
+        offsetX = e.touches[0].pageX - (rect.left + window.pageXOffset);
+        offsetY = e.touches[0].pageY - (rect.top + window.pageYOffset);
+        placeholder = document.createElement('li');
+        placeholder.classList.add('placeholder');
+        placeholder.style.height = rect.height + "px";
+        this.parentElement.insertBefore(placeholder, this.nextSibling);
+        this.style.position = "absolute";
+        this.style.zIndex = "1000";
+        moveAt(e.touches[0].pageX, e.touches[0].pageY);
+        document.addEventListener("touchmove", onTouchMove, {passive: false});
+        document.addEventListener("touchend", onTouchEnd);
         e.preventDefault();
       });
 
@@ -499,6 +518,37 @@
       function onMouseUp(e) {
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
+        draggingItem.style.position = "";
+        draggingItem.style.zIndex = "";
+        draggingItem.style.left = "";
+        draggingItem.style.top = "";
+        placeholder.parentElement.insertBefore(draggingItem, placeholder);
+        placeholder.remove();
+        draggingItem = null;
+      }
+      
+      function onTouchMove(e) {
+        if (!draggingItem) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        moveAt(touch.pageX, touch.pageY);
+        const parent = placeholder.parentElement;
+        const siblings = Array.from(parent.children).filter(child => child !== draggingItem && child !== placeholder);
+        for (const sibling of siblings) {
+          const siblingRect = sibling.getBoundingClientRect();
+          const siblingCenter = siblingRect.top + siblingRect.height / 2;
+          if (touch.clientY < siblingCenter) {
+            parent.insertBefore(placeholder, sibling);
+            break;
+          } else {
+            parent.appendChild(placeholder);
+          }
+        }
+      }
+      
+      function onTouchEnd(e) {
+        document.removeEventListener("touchmove", onTouchMove);
+        document.removeEventListener("touchend", onTouchEnd);
         draggingItem.style.position = "";
         draggingItem.style.zIndex = "";
         draggingItem.style.left = "";
@@ -570,6 +620,47 @@
         this.textContent = "펼치기";
       }
     });
+
+    // 댓글창 드래그 이동 기능 (마우스 및 터치 이벤트)
+    const commentContainer = document.getElementById('comment-container');
+    const commentHeader = document.getElementById('comment-header');
+    commentHeader.style.cursor = "move";
+
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+
+    function startDrag(e) {
+      isDragging = true;
+      // 드래그 시작 시 bottom 속성 초기화
+      commentContainer.style.bottom = "auto";
+      
+      const rect = commentContainer.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      dragOffset.x = clientX - rect.left;
+      dragOffset.y = clientY - rect.top;
+    }
+
+    function duringDrag(e) {
+      if (!isDragging) return;
+      e.preventDefault();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      commentContainer.style.left = (clientX - dragOffset.x) + "px";
+      commentContainer.style.top = (clientY - dragOffset.y) + "px";
+    }
+
+    function endDrag() {
+      isDragging = false;
+    }
+
+    commentHeader.addEventListener("mousedown", startDrag);
+    document.addEventListener("mousemove", duringDrag);
+    document.addEventListener("mouseup", endDrag);
+
+    commentHeader.addEventListener("touchstart", startDrag);
+    document.addEventListener("touchmove", duringDrag, {passive: false});
+    document.addEventListener("touchend", endDrag);
   </script>
 </head>
 <body>
@@ -599,48 +690,5 @@
     <input type="text" id="remark-input" placeholder="비고(설명)" autocomplete="off">
     <button type="submit">추가</button>
   </form>
-  <script>
-    // (댓글 등록 기능은 위의 스크립트 내에서 처리됩니다.)
-    // 댓글창 드래그 이동 기능 추가 (마우스 및 터치 이벤트)
-const commentContainer = document.getElementById('comment-container');
-const commentHeader = document.getElementById('comment-header');
-commentHeader.style.cursor = "move";
-
-let isDragging = false;
-let dragOffset = { x: 0, y: 0 };
-
-function startDrag(e) {
-  isDragging = true;
-  // 드래그 시작 시 bottom 속성 초기화
-  commentContainer.style.bottom = "auto";
-  
-  const rect = commentContainer.getBoundingClientRect();
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  dragOffset.x = clientX - rect.left;
-  dragOffset.y = clientY - rect.top;
-}
-
-function duringDrag(e) {
-  if (!isDragging) return;
-  e.preventDefault();
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  commentContainer.style.left = (clientX - dragOffset.x) + "px";
-  commentContainer.style.top = (clientY - dragOffset.y) + "px";
-}
-
-function endDrag() {
-  isDragging = false;
-}
-
-commentHeader.addEventListener("mousedown", startDrag);
-document.addEventListener("mousemove", duringDrag);
-document.addEventListener("mouseup", endDrag);
-
-commentHeader.addEventListener("touchstart", startDrag);
-document.addEventListener("touchmove", duringDrag, {passive: false});
-document.addEventListener("touchend", endDrag);
-  </script>
 </body>
 </html>
