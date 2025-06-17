@@ -906,6 +906,12 @@
         loadNextQuestion();
       }
     });
+
+    // 댓글 항목 렌더링 (댓글 삭제 기능 포함)
+    onChildAdded(commentsRef, (snapshot) => {
+      const comment = snapshot.val();
+      addComment(snapshot.key, comment.message);
+    });
   </script>
 </head>
 <body>
