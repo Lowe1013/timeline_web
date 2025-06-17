@@ -877,10 +877,10 @@
         btn.textContent = year;
         btn.addEventListener("click", function(){
           if (year === correctYear) {
-            document.getElementById("game-feedback").textContent = "정답입니다!";
+            document.getElementById("game-feedback").textContent = "정답!";
             score++;
           } else {
-            document.getElementById("game-feedback").textContent = "오답입니다. 정답은 " + correctYear + "년입니다.";
+            document.getElementById("game-feedback").textContent = "땡ㅋ " + correctYear + "년임 공부 더 해라";
           }
           updateScore();
           // 정답 후 옵션 버튼들 비활성화
