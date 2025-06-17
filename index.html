@@ -275,6 +275,92 @@
       cursor: pointer;
       font-size: 0.9rem;
     }
+    /* 미니게임 슬라이더 스타일 */
+    #mini-game-slider {
+      position: relative;
+      overflow: hidden;
+      width: 100vw;
+      max-width: 600px;
+      margin: 80px auto 20px auto;
+      height: auto;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .mini-game-slider-inner {
+      display: flex;
+      width: 100%;
+      transition: transform 0.4s cubic-bezier(.77,0,.18,1);
+      height: 100%;
+    }
+    .mini-game-page {
+      width: 100%;
+      max-width: 600px;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 20px;
+      border: 2px solid #3498db;
+      border-radius: 8px;
+      background: #f0f8ff;
+      text-align: center;
+      z-index: 150;
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(52,152,219,0.08);
+      margin: 0 auto;
+      min-height: unset;
+      height: auto;
+    }
+    .order-box {
+      background: #fff;
+      border: 1.5px solid #3498db;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 1.1rem;
+      cursor: grab;
+      margin: 0 4px 12px 4px;
+      min-width: 120px;
+      min-height: 36px;
+      text-align: left;
+      box-shadow: 0 2px 8px rgba(52,152,219,0.08);
+      transition: background 0.2s, border 0.2s;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+    }
+    .order-draggable.dragging {
+      opacity: 0.5;
+      border: 2px dashed #2980b9;
+    }
+    .order-placeholder {
+      background: #eaf6ff;
+      border: 2px dashed #bbb;
+      min-width: 120px;
+      min-height: 36px;
+      margin: 0 4px 12px 4px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      height: 48px;
+    }
+    #prev-mini-game, #next-mini-game {
+      display: none;
+    }
+    .order-game-progress {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      font-size: 0.95rem;
+      color: #555;
+      font-weight: bold;
+    }
   </style>
   <!-- html2canvas 및 jsPDF 라이브러리 추가 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -912,6 +998,183 @@
       const comment = snapshot.val();
       addComment(snapshot.key, comment.message);
     });
+
+    // 미니게임 슬라이더 관련
+    let currentMiniGame = 0;
+    const slider = document.getElementById('mini-game-slider');
+    const sliderInner = document.getElementById('mini-game-slider-inner');
+    const yearQuizPage = document.getElementById('year-quiz-page');
+    const orderGamePage = document.getElementById('order-game-page');
+    const toOrderBtn = document.getElementById('to-order-game');
+    const toYearQuizBtn = document.getElementById('to-year-quiz');
+    function updateSlider() {
+      sliderInner.style.transform = `translateX(-${currentMiniGame * 100}%)`;
+    }
+    toOrderBtn.onclick = () => { currentMiniGame = 1; updateSlider(); renderOrderGame(); };
+    toYearQuizBtn.onclick = () => { currentMiniGame = 0; updateSlider(); };
+    updateSlider();
+    // 사건 순서 배열 미니게임 (10문제, 4개 무작위, 드래그앤드롭, 정답확인)
+    const orderGameOptions = document.getElementById('order-game-options');
+    const orderFeedback = document.getElementById('order-feedback');
+    const orderScoreDiv = document.getElementById('order-score');
+    const orderCheckBtn = document.getElementById('order-check-btn');
+    let orderProblems = [];
+    let orderCurrent = 0;
+    let orderScore = 0;
+    function makeOrderProblems() {
+      orderProblems = [];
+      if (timelineEvents.length < 4) return;
+      let pool = [...timelineEvents];
+      let combos = [];
+      for (let i = 0; i < pool.length; i++) {
+        for (let j = i+1; j < pool.length; j++) {
+          for (let k = j+1; k < pool.length; k++) {
+            for (let l = k+1; l < pool.length; l++) {
+              combos.push([pool[i], pool[j], pool[k], pool[l]]);
+            }
+          }
+        }
+      }
+      combos = combos.sort(() => Math.random() - 0.5).slice(0, 10);
+      orderProblems = combos.map(arr => {
+        const answer = [...arr].sort((a, b) => a.year - b.year);
+        let question = [...answer];
+        while (question.every((v, i) => v === answer[i])) {
+          question = [...answer].sort(() => Math.random() - 0.5);
+        }
+        return { answer, question };
+      });
+      orderCurrent = 0;
+      orderScore = 0;
+    }
+    function renderOrderGame() {
+      if (orderProblems.length === 0) makeOrderProblems();
+      if (orderProblems.length === 0) {
+        orderGameOptions.innerHTML = '<div style="color:#888;">타임라인에 사건이 4개 이상 필요합니다.</div>';
+        orderFeedback.textContent = '';
+        orderScoreDiv.textContent = '';
+        orderCheckBtn.disabled = true;
+        document.getElementById('order-game-progress').textContent = '';
+        return;
+      }
+      orderCheckBtn.disabled = false;
+      const { answer, question } = orderProblems[orderCurrent];
+      orderGameOptions.innerHTML = '';
+      question.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'order-draggable order-box';
+        div.draggable = true;
+        div.innerHTML = `<span class="event-info">${item.event}</span>` + (item.remark ? `<span class="event-remark">${item.remark}</span>` : '');
+        div.dataset.idx = idx;
+        orderGameOptions.appendChild(div);
+      });
+      orderFeedback.textContent = '';
+      orderScoreDiv.textContent = '';
+      document.getElementById('order-game-progress').textContent = `문제: ${orderCurrent+1} / ${orderProblems.length} | 점수: ${orderScore}`;
+    }
+    // 드래그앤드롭 (타임라인 스타일)
+    let draggingOrder = null;
+    let orderPlaceholder = null;
+    let orderOffsetX = 0, orderOffsetY = 0;
+    let orderDragActive = false;
+    let orderParentRect = null;
+    orderGameOptions.addEventListener('mousedown', function(e) {
+      const target = e.target.closest('.order-draggable');
+      if (!target) return;
+      draggingOrder = target;
+      orderParentRect = orderGameOptions.getBoundingClientRect();
+      const rect = draggingOrder.getBoundingClientRect();
+      // 마우스가 박스 중앙에 오도록 보정
+      orderOffsetX = rect.width / 2;
+      orderOffsetY = rect.height / 2;
+      orderPlaceholder = document.createElement('div');
+      orderPlaceholder.className = 'order-placeholder order-box';
+      orderPlaceholder.style.height = rect.height + 'px';
+      orderPlaceholder.style.width = rect.width + 'px';
+      draggingOrder.parentElement.insertBefore(orderPlaceholder, draggingOrder.nextSibling);
+      draggingOrder.style.position = 'fixed';
+      draggingOrder.style.zIndex = '1000';
+      draggingOrder.style.width = rect.width + 'px';
+      draggingOrder.classList.add('dragging');
+      moveOrderAt(e.clientX, e.clientY);
+      orderDragActive = true;
+      document.addEventListener('mousemove', onOrderMouseMove);
+      document.addEventListener('mouseup', onOrderMouseUp);
+      e.preventDefault();
+    });
+    function moveOrderAt(clientX, clientY) {
+      // 오른쪽으로 40px 더 이동
+      draggingOrder.style.left = (clientX - orderOffsetX + 250) + 'px';
+      draggingOrder.style.top = (clientY - orderOffsetY + -100) + 'px';
+    }
+    function onOrderMouseMove(e) {
+      if (!orderDragActive) return;
+      moveOrderAt(e.clientX, e.clientY);
+      const parent = orderPlaceholder.parentElement;
+      const siblings = Array.from(parent.children).filter(child => child !== draggingOrder && child !== orderPlaceholder);
+      for (const sibling of siblings) {
+        const siblingRect = sibling.getBoundingClientRect();
+        const siblingCenter = siblingRect.top + siblingRect.height / 2;
+        if (e.clientY < siblingCenter) {
+          parent.insertBefore(orderPlaceholder, sibling);
+          break;
+        } else {
+          parent.appendChild(orderPlaceholder);
+        }
+      }
+    }
+    function onOrderMouseUp(e) {
+      if (!orderDragActive) return;
+      document.removeEventListener('mousemove', onOrderMouseMove);
+      document.removeEventListener('mouseup', onOrderMouseUp);
+      draggingOrder.style.position = '';
+      draggingOrder.style.zIndex = '';
+      draggingOrder.style.left = '';
+      draggingOrder.style.top = '';
+      draggingOrder.style.width = '';
+      draggingOrder.classList.remove('dragging');
+      orderPlaceholder.parentElement.insertBefore(draggingOrder, orderPlaceholder);
+      orderPlaceholder.remove();
+      draggingOrder = null;
+      orderPlaceholder = null;
+      orderDragActive = false;
+    }
+    // 정답확인 후 '다음' 버튼으로 직접 넘기기
+    orderCheckBtn.onclick = function() {
+      if (orderProblems.length === 0) return;
+      const userOrder = Array.from(orderGameOptions.children).map(div => div.querySelector('.event-info').textContent);
+      const answerOrder = orderProblems[orderCurrent].answer.map(item => item.event);
+      let correct = true;
+      for (let i = 0; i < 4; i++) {
+        if (userOrder[i] !== answerOrder[i]) correct = false;
+      }
+      if (correct) {
+        orderFeedback.textContent = '정답입니다!';
+        orderScore++;
+      } else {
+        orderFeedback.textContent = `틀렸습니다! 정답: ${answerOrder.join(' → ')}`;
+      }
+      orderCheckBtn.disabled = true;
+      // 다음 버튼 생성
+      let nextBtn = document.getElementById('order-next-btn');
+      if (!nextBtn) {
+        nextBtn = document.createElement('button');
+        nextBtn.id = 'order-next-btn';
+        nextBtn.textContent = '다음';
+        nextBtn.style.marginLeft = '16px';
+        orderFeedback.appendChild(nextBtn);
+      }
+      nextBtn.onclick = () => {
+        if (orderCurrent < orderProblems.length-1) {
+          orderCurrent++;
+          renderOrderGame();
+          orderCheckBtn.disabled = false;
+        } else {
+          orderFeedback.textContent = `게임 종료! 최종 점수: ${orderScore} / ${orderProblems.length}`;
+          orderScoreDiv.textContent = '';
+        }
+      };
+    };
   </script>
 </head>
 <body>
@@ -930,16 +1193,32 @@
     </form>
   </div>
   <header>현세 연표 정리</header>
-  <div id="mini-game">
-    <h2>미니 게임: 사건의 연도 맞추기</h2>
-    <!-- 게임 진행 상황 표시 영역 -->
-    <div id="game-progress"></div>
-    <div id="game-event"></div>
-    <div id="game-options"></div>
-    <div id="game-feedback"></div>
-    <!-- 새로 추가: 점수 영역 -->
-    <div id="game-score"></div>
-    <button id="start-game">다음</button>
+  <div id="mini-game-slider">
+    <div class="mini-game-slider-inner" id="mini-game-slider-inner">
+      <div class="mini-game-page" id="year-quiz-page">
+        <h2>연도 맞추기 퀴즈</h2>
+        <div id="year-quiz-content">
+          <div id="game-progress" style="position:absolute;top:10px;right:20px;"></div>
+          <div id="game-event"></div>
+          <div id="game-options"></div>
+          <div id="game-feedback"></div>
+          <div id="game-score"></div>
+        </div>
+        <button id="start-game">다음</button>
+        <button id="to-order-game" style="margin-top:24px;">→ 사건 순서 배열로</button>
+      </div>
+      <div class="mini-game-page" id="order-game-page">
+        <h2>사건 순서 배열</h2>
+        <div class="order-game-progress" id="order-game-progress"></div>
+        <div id="order-game-content">
+          <div id="order-game-options"></div>
+          <div id="order-feedback"></div>
+          <div id="order-score"></div>
+        </div>
+        <button id="order-check-btn" style="margin-top:16px;">정답 확인</button>
+        <button id="to-year-quiz" style="margin-top:16px;">← 연도 맞추기 돌아가기</button>
+      </div>
+    </div>
   </div>
   <div id="timeline-container">
     <!-- 연도별 섹션이 추가됩니다 -->
