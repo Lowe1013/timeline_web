@@ -1102,31 +1102,78 @@
       document.addEventListener('mouseup', onOrderMouseUp);
       e.preventDefault();
     });
+    // 터치
+    orderGameOptions.addEventListener('touchstart', function(e) {
+      const touch = e.touches[0];
+      const target = e.target.closest('.order-draggable');
+      if (!target) return;
+      startOrderDrag(e, target, touch.clientX, touch.clientY);
+      e.preventDefault();
+    }, {passive: false});
+    function startOrderDrag(e, target, clientX, clientY) {
+      draggingOrder = target;
+      orderParentRect = orderGameOptions.getBoundingClientRect();
+      const rect = draggingOrder.getBoundingClientRect();
+      orderOffsetX = rect.width / 2;
+      orderOffsetY = rect.height / 2;
+      orderPlaceholder = document.createElement('div');
+      orderPlaceholder.className = 'order-placeholder order-box';
+      orderPlaceholder.style.height = rect.height + 'px';
+      orderPlaceholder.style.width = rect.width + 'px';
+      draggingOrder.parentElement.insertBefore(orderPlaceholder, draggingOrder.nextSibling);
+      draggingOrder.style.position = 'fixed';
+      draggingOrder.style.zIndex = '1000';
+      draggingOrder.style.width = rect.width + 'px';
+      draggingOrder.classList.add('dragging');
+      moveOrderAt(clientX, clientY);
+      orderDragActive = true;
+      document.addEventListener('mousemove', onOrderMouseMove);
+      document.addEventListener('mouseup', onOrderMouseUp);
+      document.addEventListener('touchmove', onOrderTouchMove, {passive: false});
+      document.addEventListener('touchend', onOrderTouchEnd);
+    }
     function moveOrderAt(clientX, clientY) {
-      // 오른쪽으로 40px 더 이동
-      draggingOrder.style.left = (clientX - orderOffsetX + 250) + 'px';
-      draggingOrder.style.top = (clientY - orderOffsetY + -100) + 'px';
+      draggingOrder.style.left = (clientX - orderOffsetX + 40) + 'px';
+      draggingOrder.style.top = (clientY - orderOffsetY) + 'px';
     }
     function onOrderMouseMove(e) {
       if (!orderDragActive) return;
       moveOrderAt(e.clientX, e.clientY);
+      updateOrderPlaceholder(e.clientY);
+    }
+    function onOrderMouseUp(e) {
+      if (!orderDragActive) return;
+      finishOrderDrag();
+    }
+    function onOrderTouchMove(e) {
+      if (!orderDragActive) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      moveOrderAt(touch.clientX, touch.clientY);
+      updateOrderPlaceholder(touch.clientY);
+    }
+    function onOrderTouchEnd(e) {
+      if (!orderDragActive) return;
+      finishOrderDrag();
+    }
+    function updateOrderPlaceholder(clientY) {
       const parent = orderPlaceholder.parentElement;
       const siblings = Array.from(parent.children).filter(child => child !== draggingOrder && child !== orderPlaceholder);
       for (const sibling of siblings) {
         const siblingRect = sibling.getBoundingClientRect();
         const siblingCenter = siblingRect.top + siblingRect.height / 2;
-        if (e.clientY < siblingCenter) {
+        if (clientY < siblingCenter) {
           parent.insertBefore(orderPlaceholder, sibling);
-          break;
-        } else {
-          parent.appendChild(orderPlaceholder);
+          return;
         }
       }
+      parent.appendChild(orderPlaceholder);
     }
-    function onOrderMouseUp(e) {
-      if (!orderDragActive) return;
+    function finishOrderDrag() {
       document.removeEventListener('mousemove', onOrderMouseMove);
       document.removeEventListener('mouseup', onOrderMouseUp);
+      document.removeEventListener('touchmove', onOrderTouchMove);
+      document.removeEventListener('touchend', onOrderTouchEnd);
       draggingOrder.style.position = '';
       draggingOrder.style.zIndex = '';
       draggingOrder.style.left = '';
