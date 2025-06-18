@@ -915,6 +915,7 @@
       progressElem.textContent = "문제: " + (currentQuestionIndex + 1) + " / " + gameQuestions.length;
     }
 
+    // 연도 맞추기 미니게임: 문제 중복 없이 출제
     function initializeMiniGame() {
       if (timelineEvents.length === 0) {
         document.getElementById("game-event").textContent = "등록된 사건이 없습니다.";
@@ -924,8 +925,9 @@
         document.getElementById("game-progress").textContent = "";
         return;
       }
-      // 게임 시작 시 문제 순서를 랜덤하게 섞고, 초기화
-      gameQuestions = shuffle([...timelineEvents]);
+      // 사건(event, year) 기준으로 중복 제거
+      const uniqueEvents = Array.from(new Map(timelineEvents.map(e => [e.event + e.year, e])).values());
+      gameQuestions = shuffle([...uniqueEvents]);
       currentQuestionIndex = 0;
       score = 0;
       updateScore();
@@ -1072,106 +1074,115 @@
       orderScoreDiv.textContent = '';
       document.getElementById('order-game-progress').textContent = `문제: ${orderCurrent+1} / ${orderProblems.length} | 점수: ${orderScore}`;
     }
-    // 드래그앤드롭 (타임라인 스타일)
+    // 드래그앤드롭 (타임라인과 완전히 동일하게)
     let draggingOrder = null;
     let orderPlaceholder = null;
     let orderOffsetX = 0, orderOffsetY = 0;
     let orderDragActive = false;
-    let orderParentRect = null;
+
     orderGameOptions.addEventListener('mousedown', function(e) {
       const target = e.target.closest('.order-draggable');
       if (!target) return;
       draggingOrder = target;
-      orderParentRect = orderGameOptions.getBoundingClientRect();
       const rect = draggingOrder.getBoundingClientRect();
-      // 마우스가 박스 중앙에 오도록 보정
-      orderOffsetX = rect.width / 2;
-      orderOffsetY = rect.height / 2;
+      const parentRect = orderGameOptions.getBoundingClientRect();
+      orderOffsetX = e.pageX - (rect.left + window.pageXOffset);
+      orderOffsetY = e.pageY - (rect.top + window.pageYOffset);
       orderPlaceholder = document.createElement('div');
       orderPlaceholder.className = 'order-placeholder order-box';
       orderPlaceholder.style.height = rect.height + 'px';
       orderPlaceholder.style.width = rect.width + 'px';
       draggingOrder.parentElement.insertBefore(orderPlaceholder, draggingOrder.nextSibling);
-      draggingOrder.style.position = 'fixed';
+      draggingOrder.style.position = 'absolute';
       draggingOrder.style.zIndex = '1000';
       draggingOrder.style.width = rect.width + 'px';
       draggingOrder.classList.add('dragging');
-      moveOrderAt(e.clientX, e.clientY);
+      moveOrderAt(e.pageX, e.pageY);
       orderDragActive = true;
       document.addEventListener('mousemove', onOrderMouseMove);
       document.addEventListener('mouseup', onOrderMouseUp);
       e.preventDefault();
     });
-    // 터치
     orderGameOptions.addEventListener('touchstart', function(e) {
-      const touch = e.touches[0];
       const target = e.target.closest('.order-draggable');
       if (!target) return;
-      startOrderDrag(e, target, touch.clientX, touch.clientY);
-      e.preventDefault();
-    }, {passive: false});
-    function startOrderDrag(e, target, clientX, clientY) {
       draggingOrder = target;
-      orderParentRect = orderGameOptions.getBoundingClientRect();
       const rect = draggingOrder.getBoundingClientRect();
-      orderOffsetX = rect.width / 2;
-      orderOffsetY = rect.height / 2;
+      const parentRect = orderGameOptions.getBoundingClientRect();
+      orderOffsetX = e.touches[0].pageX - (rect.left + window.pageXOffset);
+      orderOffsetY = e.touches[0].pageY - (rect.top + window.pageYOffset);
       orderPlaceholder = document.createElement('div');
       orderPlaceholder.className = 'order-placeholder order-box';
       orderPlaceholder.style.height = rect.height + 'px';
       orderPlaceholder.style.width = rect.width + 'px';
       draggingOrder.parentElement.insertBefore(orderPlaceholder, draggingOrder.nextSibling);
-      draggingOrder.style.position = 'fixed';
+      draggingOrder.style.position = 'absolute';
       draggingOrder.style.zIndex = '1000';
       draggingOrder.style.width = rect.width + 'px';
       draggingOrder.classList.add('dragging');
-      moveOrderAt(clientX, clientY);
+      moveOrderAt(e.touches[0].pageX, e.touches[0].pageY);
       orderDragActive = true;
-      document.addEventListener('mousemove', onOrderMouseMove);
-      document.addEventListener('mouseup', onOrderMouseUp);
       document.addEventListener('touchmove', onOrderTouchMove, {passive: false});
       document.addEventListener('touchend', onOrderTouchEnd);
-    }
-    function moveOrderAt(clientX, clientY) {
-      draggingOrder.style.left = (clientX - orderOffsetX + 250) + 'px';
-      draggingOrder.style.top = (clientY - orderOffsetY + -100) + 'px';
+      e.preventDefault();
+    });
+    function moveOrderAt(pageX, pageY) {
+      const parentRect = orderGameOptions.getBoundingClientRect();
+      // X는 -30px, Y는 +40px 보정 (이전값에서 각각 -10, +10 추가)
+      draggingOrder.style.left = (pageX - orderOffsetX - parentRect.left - window.pageXOffset + 100) + 'px';
+      draggingOrder.style.top = (pageY - orderOffsetY - parentRect.top - window.pageYOffset + 60) + 'px';
     }
     function onOrderMouseMove(e) {
       if (!orderDragActive) return;
-      moveOrderAt(e.clientX, e.clientY);
-      updateOrderPlaceholder(e.clientY);
-    }
-    function onOrderMouseUp(e) {
-      if (!orderDragActive) return;
-      finishOrderDrag();
-    }
-    function onOrderTouchMove(e) {
-      if (!orderDragActive) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      moveOrderAt(touch.clientX, touch.clientY);
-      updateOrderPlaceholder(touch.clientY);
-    }
-    function onOrderTouchEnd(e) {
-      if (!orderDragActive) return;
-      finishOrderDrag();
-    }
-    function updateOrderPlaceholder(clientY) {
+      moveOrderAt(e.pageX, e.pageY);
       const parent = orderPlaceholder.parentElement;
       const siblings = Array.from(parent.children).filter(child => child !== draggingOrder && child !== orderPlaceholder);
       for (const sibling of siblings) {
         const siblingRect = sibling.getBoundingClientRect();
         const siblingCenter = siblingRect.top + siblingRect.height / 2;
-        if (clientY < siblingCenter) {
+        if (e.clientY < siblingCenter) {
           parent.insertBefore(orderPlaceholder, sibling);
-          return;
+          break;
+        } else {
+          parent.appendChild(orderPlaceholder);
         }
       }
-      parent.appendChild(orderPlaceholder);
     }
-    function finishOrderDrag() {
+    function onOrderMouseUp(e) {
+      if (!orderDragActive) return;
       document.removeEventListener('mousemove', onOrderMouseMove);
       document.removeEventListener('mouseup', onOrderMouseUp);
+      draggingOrder.style.position = '';
+      draggingOrder.style.zIndex = '';
+      draggingOrder.style.left = '';
+      draggingOrder.style.top = '';
+      draggingOrder.style.width = '';
+      draggingOrder.classList.remove('dragging');
+      orderPlaceholder.parentElement.insertBefore(draggingOrder, orderPlaceholder);
+      orderPlaceholder.remove();
+      draggingOrder = null;
+      orderPlaceholder = null;
+      orderDragActive = false;
+    }
+    function onOrderTouchMove(e) {
+      if (!draggingOrder) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      moveOrderAt(touch.pageX, touch.pageY);
+      const parent = orderPlaceholder.parentElement;
+      const siblings = Array.from(parent.children).filter(child => child !== draggingOrder && child !== orderPlaceholder);
+      for (const sibling of siblings) {
+        const siblingRect = sibling.getBoundingClientRect();
+        const siblingCenter = siblingRect.top + siblingRect.height / 2;
+        if (touch.clientY < siblingCenter) {
+          parent.insertBefore(orderPlaceholder, sibling);
+          break;
+        } else {
+          parent.appendChild(orderPlaceholder);
+        }
+      }
+    }
+    function onOrderTouchEnd(e) {
       document.removeEventListener('touchmove', onOrderTouchMove);
       document.removeEventListener('touchend', onOrderTouchEnd);
       draggingOrder.style.position = '';
