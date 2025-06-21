@@ -430,8 +430,11 @@
           const monthB = itemB.month ? parseInt(itemB.month, 10) : 0;
           return monthA - monthB;
         });
+        // undefined year를 가진 항목은 제외
         sorted.forEach(([key, item]) => {
-          addTimelineItem(item.year, item.month, item.event, item.remark, key);
+          if (item.year !== undefined && item.year !== null && item.year !== "") {
+            addTimelineItem(item.year, item.month, item.event, item.remark, key);
+          }
         });
       });
     }
@@ -571,7 +574,7 @@
         yearSection.setAttribute('data-year', year);
 
         const heading = document.createElement('h2');
-        heading.textContent = `${year}년`;
+        heading.textContent = year ? `${year}년` : '연도 없음';
         yearSection.appendChild(heading);
 
         const ul = document.createElement('ul');
@@ -598,10 +601,10 @@
 
       const leftDiv = document.createElement('div');
       leftDiv.classList.add('event-info');
-      if (month !== "") {
+      if (month !== '' && month !== undefined) {
         const monthSpan = document.createElement('span');
         monthSpan.classList.add('event-month');
-        monthSpan.textContent = `${month}월 `;
+        monthSpan.textContent = month ? `${month}월 ` : '';
         leftDiv.appendChild(monthSpan);
       }
       const textSpan = document.createElement('span');
@@ -617,7 +620,9 @@
       ul.appendChild(li);
 
       // 타임라인 이벤트를 전역 배열에 저장 (미니게임에 사용)
-      timelineEvents.push({ event: text, year: year });
+      if (year !== undefined && year !== null && year !== "") {
+        timelineEvents.push({ event: text, year: year });
+      }
 
       li.addEventListener('contextmenu', function(e) {
         e.preventDefault();
@@ -917,7 +922,9 @@
 
     // 연도 맞추기 미니게임: 문제 중복 없이 출제
     function initializeMiniGame() {
-      if (timelineEvents.length === 0) {
+      // timelineEvents에서 year가 undefined/null/빈문자열인 항목 제거
+      const filteredEvents = timelineEvents.filter(e => e.year !== undefined && e.year !== null && e.year !== "");
+      if (filteredEvents.length === 0) {
         document.getElementById("game-event").textContent = "등록된 사건이 없습니다.";
         document.getElementById("game-options").innerHTML = "";
         document.getElementById("game-feedback").textContent = "";
@@ -926,7 +933,7 @@
         return;
       }
       // 사건(event, year) 기준으로 중복 제거
-      const uniqueEvents = Array.from(new Map(timelineEvents.map(e => [e.event + e.year, e])).values());
+      const uniqueEvents = Array.from(new Map(filteredEvents.map(e => [e.event + e.year, e])).values());
       gameQuestions = shuffle([...uniqueEvents]);
       currentQuestionIndex = 0;
       score = 0;
@@ -946,9 +953,15 @@
         return;
       }
       const currentEvent = gameQuestions[currentQuestionIndex];
+      // year가 undefined/null/빈문자열이면 건너뜀
+      if (!currentEvent.year) {
+        currentQuestionIndex++;
+        loadNextQuestion();
+        return;
+      }
       document.getElementById("game-event").textContent = `"${currentEvent.event}" 사건의 연도는?`;
       const correctYear = currentEvent.year;
-      let allYears = Array.from(new Set(timelineEvents.map(item => item.year)));
+      let allYears = Array.from(new Set(gameQuestions.map(item => item.year).filter(y => y !== undefined && y !== null && y !== "")));
       let options;
       if (allYears.length <= 4) {
         options = allYears.slice();
