@@ -126,57 +126,6 @@
       border-left: 1px solid #ddd;
       min-width: 100px;
     }
-    /* 타임라인 입력폼 – 중앙 하단 플로팅 */
-    #timeline-form {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      padding: 12px 16px;
-      background: #ffffff;
-      border: 1px solid #aaa;
-      border-radius: 24px;
-      width: 90%;
-      max-width: 600px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      z-index: 200;
-    }
-    #timeline-form input {
-      padding: 10px;
-      border-radius: 24px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-      outline: none;
-    }
-    #timeline-form input[type="number"] {
-      width: 90px;
-    }
-    #month-input {
-      width: 70px;
-    }
-    #timeline-form input[type="text"] {
-      flex: 2;
-      min-width: 250px;
-    }
-    #remark-input {
-      width: 150px;
-    }
-    #timeline-form button {
-      padding: 10px 20px;
-      font-size: 1rem;
-      border: none;
-      background: #3498db;
-      color: white;
-      cursor: pointer;
-      border-radius: 24px;
-      transition: background 0.3s;
-    }
-    #timeline-form button:hover {
-      background: #2980b9;
-    }
     /* PDF 저장 버튼 – 오른쪽 상단 */
     #save-pdf {
       position: fixed;
@@ -365,6 +314,54 @@
   <!-- html2canvas 및 jsPDF 라이브러리 추가 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <!-- 좌측 하단 플로팅 댓글(채팅) 영역 -->
+  <div id="comment-container">
+    <div id="comment-header">
+      <h3>댓글</h3>
+      <button id="toggle-comments">접기</button>
+    </div>
+    <div id="comment-messages">
+      <!-- 댓글 메시지가 표시됩니다 -->
+    </div>
+    <form id="comment-form">
+      <input type="text" id="comment-input" placeholder="댓글을 입력하세요..." autocomplete="off">
+      <button type="submit">등록</button>
+    </form>
+  </div>
+  <header>현세 연표 정리</header>
+  <div id="mini-game-slider">
+    <div class="mini-game-slider-inner" id="mini-game-slider-inner">
+      <div class="mini-game-page" id="year-quiz-page">
+        <h2>연도 맞추기 퀴즈</h2>
+        <div id="year-quiz-content">
+          <div id="game-progress" style="position:absolute;top:10px;right:20px;"></div>
+          <div id="game-event"></div>
+          <div id="game-options"></div>
+          <div id="game-feedback"></div>
+          <div id="game-score"></div>
+        </div>
+        <button id="start-game">다음</button>
+        <button id="to-order-game" style="margin-top:24px;">→ 사건 순서 배열로</button>
+      </div>
+      <div class="mini-game-page" id="order-game-page">
+        <h2>사건 순서 배열</h2>
+        <div class="order-game-progress" id="order-game-progress"></div>
+        <div id="order-game-content">
+          <div id="order-game-options"></div>
+          <div id="order-feedback"></div>
+          <div id="order-score"></div>
+        </div>
+        <button id="order-check-btn" style="margin-top:16px;">정답 확인</button>
+        <button id="to-year-quiz" style="margin-top:16px;">← 연도 맞추기 돌아가기</button>
+      </div>
+    </div>
+  </div>
+  <div id="timeline-container">
+    <!-- 연도별 섹션이 추가됩니다 -->
+  </div>
+  <button id="save-pdf">전체 연표 PDF로 저장</button>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
@@ -402,11 +399,6 @@
     let placeholder = null;
     let offsetX = 0, offsetY = 0;
 
-    const timelineForm = document.getElementById('timeline-form');
-    const yearInput = document.getElementById('year-input');
-    const monthInput = document.getElementById('month-input');
-    const eventInput = document.getElementById('event-input');
-    const remarkInput = document.getElementById('remark-input');
     const timelineContainer = document.getElementById('timeline-container');
 
     const timelineRef = ref(db, 'timelineItems');
@@ -441,63 +433,6 @@
 
     // 페이지 로드시 renderTimeline 호출
     renderTimeline();
-
-    // 타임라인 항목 추가 및 수정
-    timelineForm.addEventListener('submit', function(event) {
-      event.preventDefault();
-      const year = yearInput.value.trim();
-      const month = monthInput.value.trim();
-      const eventText = eventInput.value.trim();
-      const remarkText = remarkInput.value.trim();
-      if (!year || !eventText) return;
-
-      const yearNum = parseInt(year, 10);
-      const monthNum = month ? parseInt(month, 10) : '';
-
-      if (editingKey) {
-        update(ref(db, `timelineItems/${editingKey}`), {
-          year: yearNum,
-          month: monthNum,
-          event: eventText,
-          remark: remarkText,
-          timestamp: Date.now()
-        });
-        if (editingLi) {
-          const eventSpan = editingLi.querySelector('.event-info span:not(.event-month)');
-          const remarkSpan = editingLi.querySelector('.event-remark');
-          if(eventSpan) eventSpan.textContent = eventText;
-          if(remarkSpan) remarkSpan.textContent = remarkText;
-        }
-        timelineEvents = timelineEvents.map(item => item.event === eventInput.value ? { event: eventText, year: yearNum } : item);
-        editingKey = null;
-        editingLi = null;
-        document.querySelector('#timeline-form button').textContent = '추가';
-      } else {
-        // 새 항목 추가 시 sortOrder는 가장 큰 값+1로 부여
-        get(child(ref(db), 'timelineItems')).then((itemsSnap) => {
-          let maxOrder = -1;
-          if (itemsSnap.exists()) {
-            Object.values(itemsSnap.val()).forEach(item => {
-              if (typeof item.sortOrder === 'number' && item.sortOrder > maxOrder) maxOrder = item.sortOrder;
-            });
-          }
-          const newItemRef = push(timelineRef);
-          set(newItemRef, {
-            year: yearNum,
-            month: monthNum,
-            event: eventText,
-            remark: remarkText,
-            timestamp: Date.now(),
-            sortOrder: maxOrder + 1
-          });
-        });
-      }
-
-      yearInput.value = "";
-      monthInput.value = "";
-      eventInput.value = "";
-      remarkInput.value = "";
-    });
 
     function showContextMenu(e, li) {
       // 수정/삭제 기능 제거: 아무 동작도 하지 않음
@@ -875,25 +810,36 @@
       orderProblems = [];
       if (timelineEvents.length < 4) return;
       let pool = [...timelineEvents];
-      let combos = [];
-      for (let i = 0; i < pool.length; i++) {
-        for (let j = i+1; j < pool.length; j++) {
-          for (let k = j+1; k < pool.length; k++) {
-            for (let l = k+1; l < pool.length; l++) {
-              combos.push([pool[i], pool[j], pool[k], pool[l]]);
-            }
+      let usedSet = new Set();
+      let tries = 0;
+      while (orderProblems.length < 10 && tries < 1000) {
+        // 4개 무작위 추출 (중복 없이)
+        let sample = [];
+        let indices = [];
+        while (sample.length < 4) {
+          let idx = Math.floor(Math.random() * pool.length);
+          if (!indices.includes(idx)) {
+            sample.push(pool[idx]);
+            indices.push(idx);
           }
         }
-      }
-      combos = combos.sort(() => Math.random() - 0.5).slice(0, 10);
-      orderProblems = combos.map(arr => {
-        const answer = [...arr].sort((a, b) => a.year - b.year);
+        // 정답(연도순)
+        const answer = [...sample].sort((a, b) => a.year - b.year);
+        // 문제(섞기, 정답과 다를 때까지)
         let question = [...answer];
-        while (question.every((v, i) => v === answer[i])) {
+        let shuffleTries = 0;
+        while (question.every((v, i) => v === answer[i]) && shuffleTries < 10) {
           question = [...answer].sort(() => Math.random() - 0.5);
+          shuffleTries++;
         }
-        return { answer, question };
-      });
+        // 중복 방지
+        const key = question.map(e => e.event).join('|');
+        if (!usedSet.has(key)) {
+          orderProblems.push({ answer, question });
+          usedSet.add(key);
+        }
+        tries++;
+      }
       orderCurrent = 0;
       orderScore = 0;
     }
@@ -1082,60 +1028,5 @@
       };
     };
   </script>
-</head>
-<body>
-  <!-- 좌측 하단 플로팅 댓글(채팅) 영역 -->
-  <div id="comment-container">
-    <div id="comment-header">
-      <h3>댓글</h3>
-      <button id="toggle-comments">접기</button>
-    </div>
-    <div id="comment-messages">
-      <!-- 댓글 메시지가 표시됩니다 -->
-    </div>
-    <form id="comment-form">
-      <input type="text" id="comment-input" placeholder="댓글을 입력하세요..." autocomplete="off">
-      <button type="submit">등록</button>
-    </form>
-  </div>
-  <header>현세 연표 정리</header>
-  <div id="mini-game-slider">
-    <div class="mini-game-slider-inner" id="mini-game-slider-inner">
-      <div class="mini-game-page" id="year-quiz-page">
-        <h2>연도 맞추기 퀴즈</h2>
-        <div id="year-quiz-content">
-          <div id="game-progress" style="position:absolute;top:10px;right:20px;"></div>
-          <div id="game-event"></div>
-          <div id="game-options"></div>
-          <div id="game-feedback"></div>
-          <div id="game-score"></div>
-        </div>
-        <button id="start-game">다음</button>
-        <button id="to-order-game" style="margin-top:24px;">→ 사건 순서 배열로</button>
-      </div>
-      <div class="mini-game-page" id="order-game-page">
-        <h2>사건 순서 배열</h2>
-        <div class="order-game-progress" id="order-game-progress"></div>
-        <div id="order-game-content">
-          <div id="order-game-options"></div>
-          <div id="order-feedback"></div>
-          <div id="order-score"></div>
-        </div>
-        <button id="order-check-btn" style="margin-top:16px;">정답 확인</button>
-        <button id="to-year-quiz" style="margin-top:16px;">← 연도 맞추기 돌아가기</button>
-      </div>
-    </div>
-  </div>
-  <div id="timeline-container">
-    <!-- 연도별 섹션이 추가됩니다 -->
-  </div>
-  <button id="save-pdf">전체 연표 PDF로 저장</button>
-  <form id="timeline-form">
-    <input type="number" id="year-input" placeholder="연도" min="0" required oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-    <input type="number" id="month-input" placeholder="월" min="1" max="12" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-    <input type="text" id="event-input" placeholder="사건 입력" autocomplete="off" required>
-    <input type="text" id="remark-input" placeholder="비고(설명)" autocomplete="off">
-    <button type="submit">추가</button>
-  </form>
 </body>
 </html>
