@@ -402,11 +402,6 @@
     let placeholder = null;
     let offsetX = 0, offsetY = 0;
 
-    const timelineForm = document.getElementById('timeline-form');
-    const yearInput = document.getElementById('year-input');
-    const monthInput = document.getElementById('month-input');
-    const eventInput = document.getElementById('event-input');
-    const remarkInput = document.getElementById('remark-input');
     const timelineContainer = document.getElementById('timeline-container');
 
     const timelineRef = ref(db, 'timelineItems');
@@ -1130,12 +1125,5 @@
     <!-- 연도별 섹션이 추가됩니다 -->
   </div>
   <button id="save-pdf">전체 연표 PDF로 저장</button>
-  <form id="timeline-form">
-    <input type="number" id="year-input" placeholder="연도" min="0" required oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-    <input type="number" id="month-input" placeholder="월" min="1" max="12" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-    <input type="text" id="event-input" placeholder="사건 입력" autocomplete="off" required>
-    <input type="text" id="remark-input" placeholder="비고(설명)" autocomplete="off">
-    <button type="submit">추가</button>
-  </form>
 </body>
 </html>
