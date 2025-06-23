@@ -144,6 +144,65 @@
     #save-pdf:hover {
       background: #2980b9;
     }
+    /* 질문 공간 버튼 – 왼쪽 상단 */
+    #question-space-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: #1da1f2;
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      padding: 10px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(29,161,242,0.08);
+      transition: background 0.2s;
+      z-index: 300;
+      margin-right: 8px;
+      display: block;
+    }
+    #question-space-btn:hover {
+      background: #0d8ddb;
+    }
+    /* 돌아가기 버튼 – 질문공간 내 상단 왼쪽 */
+    #back-btn {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      background: #1da1f2;
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      padding: 10px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(29,161,242,0.08);
+      transition: background 0.2s;
+      z-index: 1001;
+      display: block;
+    }
+    #back-btn:hover {
+      background: #0d8ddb;
+    }
+    /* 닉네임 표시 */
+    #nickname-bar {
+      position: fixed;
+      top: 70px;
+      right: 120px;
+      background: #f0f8ff;
+      color: #1da1f2;
+      border-radius: 16px;
+      padding: 6px 18px;
+      font-size: 1rem;
+      font-weight: bold;
+      z-index: 301;
+      box-shadow: 0 2px 8px rgba(29,161,242,0.08);
+      display: none;
+    }
+    #question-space.active #nickname-bar { display: block; }
     /* 컨텍스트 메뉴 스타일 */
     .context-menu {
       position: absolute;
@@ -310,6 +369,153 @@
       color: #555;
       font-weight: bold;
     }
+    /* 질문 공간(트위터 스타일) */
+    #question-space {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #f5f8fa;
+      z-index: 9999;
+      overflow-y: auto;
+      padding-top: 80px;
+    }
+    .question-list {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 0 12px 80px 12px;
+    }
+    .question-card {
+      background: #fff;
+      border: 1.5px solid #e1e8ed;
+      border-radius: 16px;
+      margin-bottom: 18px;
+      padding: 18px 18px 10px 18px;
+      box-shadow: 0 2px 8px rgba(29,161,242,0.04);
+      position: relative;
+    }
+    .question-content {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      color: #222;
+      word-break: break-all;
+    }
+    .question-meta {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .answer-list {
+      margin-left: 16px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+    .answer-item {
+      background: #f0f8ff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      font-size: 0.98rem;
+      color: #333;
+      word-break: break-all;
+    }
+    .answer-meta {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 2px;
+    }
+    .answer-form {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .answer-form input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #bcdffb;
+      border-radius: 6px;
+      font-size: 0.98rem;
+    }
+    .answer-form button {
+      background: #1da1f2;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 16px;
+      font-size: 0.98rem;
+      cursor: pointer;
+    }
+    .answer-form button:hover {
+      background: #0d8ddb;
+    }
+    #question-form {
+      display: flex;
+      gap: 8px;
+      max-width: 520px;
+      margin: 0 auto 24px auto;
+      padding: 0 12px;
+    }
+    #question-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid #bcdffb;
+      border-radius: 24px;
+      font-size: 1.1rem;
+    }
+    #question-form button {
+      background: #1da1f2;
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      padding: 10px 24px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    #question-form button:hover {
+      background: #0d8ddb;
+    }
+    /* 질문/답글 수정/삭제 버튼 */
+    .q-action-btn, .a-action-btn {
+      background: #eee;
+      color: #1da1f2;
+      border: none;
+      border-radius: 8px;
+      padding: 2px 10px;
+      font-size: 0.92rem;
+      margin-left: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .q-action-btn:hover, .a-action-btn:hover {
+      background: #bcdffb;
+    }
+    .q-edit-box, .a-edit-box {
+      width: 100%;
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+    }
+    .q-edit-box input, .a-edit-box input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #bcdffb;
+      border-radius: 6px;
+      font-size: 0.98rem;
+    }
+    .q-edit-box button, .a-edit-box button {
+      background: #1da1f2;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 16px;
+      font-size: 0.98rem;
+      cursor: pointer;
+    }
+    .q-edit-box button:hover, .a-edit-box button:hover {
+      background: #0d8ddb;
+    }
   </style>
   <!-- html2canvas 및 jsPDF 라이브러리 추가 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -362,6 +568,16 @@
     <!-- 연도별 섹션이 추가됩니다 -->
   </div>
   <button id="save-pdf">전체 연표 PDF로 저장</button>
+  <button id="question-space-btn">질문 공간</button>
+  <div id="nickname-bar"></div>
+  <div id="question-space">
+    <button id="back-btn">돌아가기</button>
+    <form id="question-form">
+      <input id="question-input" type="text" maxlength="120" placeholder="궁금한 점을 질문해보세요! (최대 120자)" autocomplete="off" />
+      <button type="submit">질문 등록</button>
+    </form>
+    <div class="question-list" id="question-list"></div>
+  </div>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
@@ -1027,6 +1243,208 @@
         }
       };
     };
+    // 질문 공간 (트위터 스타일, 별도 페이지, 질문/답글)
+    // ===== 질문 공간 (트위터 스타일 Q&A, 닉네임 시스템+수정/삭제+돌아가기) =====
+    import { getDatabase as getQDB, ref as qRef, push as qPush, set as qSet, onChildAdded as onQChildAdded, onChildChanged as onQChildChanged, onChildRemoved as onQChildRemoved, update as qUpdate, remove as qRemove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    const qdb = getQDB();
+    const questionsRef = qRef(qdb, 'questions');
+
+    // 닉네임 시스템 (랜덤, localStorage)
+    function getOrCreateNickname() {
+      let nick = localStorage.getItem('yunpyo_nickname');
+      if (!nick) {
+        const animals = ['고양이','강아지','토끼','여우','호랑이','사자','곰','다람쥐','펭귄','수달','늑대','부엉이','참새','고래','상어','판다','햄스터','치타','코끼리','기린'];
+        const adjs = ['행복한','용감한','귀여운','똑똑한','엉뚱한','느긋한','재빠른','수줍은','명랑한','신중한','유쾌한','차분한','활발한','온순한','씩씩한','엉성한','엉뚱한','재치있는','따뜻한','시크한'];
+        const rand = arr => arr[Math.floor(Math.random()*arr.length)];
+        nick = rand(adjs) + ' ' + rand(animals) + ' #' + Math.floor(1000+Math.random()*9000);
+        localStorage.setItem('yunpyo_nickname', nick);
+      }
+      return nick;
+    }
+    const nickname = getOrCreateNickname();
+    const nicknameBar = document.getElementById('nickname-bar');
+    nicknameBar.textContent = '닉네임: ' + nickname;
+
+    // DOM
+    const questionSpaceBtn = document.getElementById('question-space-btn');
+    const questionSpace = document.getElementById('question-space');
+    const backBtn = document.getElementById('back-btn');
+    const questionForm = document.getElementById('question-form');
+    const questionInput = document.getElementById('question-input');
+    const questionList = document.getElementById('question-list');
+
+    // 페이지 전환
+    questionSpaceBtn.onclick = () => {
+      document.body.style.overflow = 'hidden';
+      questionSpace.classList.add('active');
+      questionSpace.style.display = 'block';
+      nicknameBar.style.display = 'block';
+    };
+    backBtn.onclick = () => {
+      questionSpace.classList.remove('active');
+      questionSpace.style.display = 'none';
+      document.body.style.overflow = '';
+      nicknameBar.style.display = 'none';
+    };
+
+    // 질문 등록
+    questionForm.onsubmit = e => {
+      e.preventDefault();
+      const content = questionInput.value.trim();
+      if (!content) return;
+      const newQRef = qPush(questionsRef);
+      qSet(newQRef, {
+        content,
+        timestamp: Date.now(),
+        nickname,
+        answers: {}
+      });
+      questionInput.value = '';
+    };
+
+    // 질문 렌더링 (수정/삭제)
+    function renderQuestions(questions) {
+      questionList.innerHTML = '';
+      const arr = Object.entries(questions || {}).sort((a, b) => b[1].timestamp - a[1].timestamp);
+      arr.forEach(([qkey, q]) => {
+        const card = document.createElement('div');
+        card.className = 'question-card';
+        // 질문 내용/수정
+        let qContentDiv = document.createElement('div');
+        qContentDiv.className = 'question-content';
+        qContentDiv.textContent = q.content;
+        card.appendChild(qContentDiv);
+        // 메타
+        let metaDiv = document.createElement('div');
+        metaDiv.className = 'question-meta';
+        metaDiv.textContent = (q.nickname ? q.nickname+' · ' : '') + new Date(q.timestamp).toLocaleString();
+        card.appendChild(metaDiv);
+        // 수정/삭제 버튼(본인만)
+        if (q.nickname === nickname) {
+          let editBtn = document.createElement('button');
+          editBtn.textContent = '수정';
+          editBtn.className = 'q-action-btn';
+          let delBtn = document.createElement('button');
+          delBtn.textContent = '삭제';
+          delBtn.className = 'q-action-btn';
+          metaDiv.appendChild(editBtn);
+          metaDiv.appendChild(delBtn);
+          // 수정
+          editBtn.onclick = () => {
+            if (card.querySelector('.q-edit-box')) return;
+            let editBox = document.createElement('div');
+            editBox.className = 'q-edit-box';
+            editBox.innerHTML = `<input type="text" maxlength="120" value="${q.content.replace(/"/g,'&quot;')}"><button>저장</button><button>취소</button>`;
+            let input = editBox.querySelector('input');
+            let saveBtn = editBox.querySelector('button');
+            let cancelBtn = editBox.querySelectorAll('button')[1];
+            saveBtn.onclick = () => {
+              let val = input.value.trim();
+              if (!val) return;
+              qUpdate(qRef(qdb, `questions/${qkey}`), { content: val });
+            };
+            cancelBtn.onclick = () => { editBox.remove(); };
+            card.insertBefore(editBox, card.children[1]);
+          };
+          // 삭제
+          delBtn.onclick = () => {
+            if (confirm('삭제하시겠습니까?')) qRemove(qRef(qdb, `questions/${qkey}`));
+          };
+        }
+        // 답글 목록
+        let answerList = document.createElement('div');
+        answerList.className = 'answer-list';
+        if (q.answers) {
+          Object.entries(q.answers).sort((a, b) => a[1].timestamp - b[1].timestamp).forEach(([akey, a]) => {
+            let item = document.createElement('div');
+            item.className = 'answer-item';
+            let aContent = document.createElement('div');
+            aContent.textContent = a.content;
+            item.appendChild(aContent);
+            let aMeta = document.createElement('div');
+            aMeta.className = 'answer-meta';
+            aMeta.textContent = (a.nickname ? a.nickname+' · ' : '') + new Date(a.timestamp).toLocaleString();
+            // 답글 수정/삭제(본인만)
+            if (a.nickname === nickname) {
+              let aEditBtn = document.createElement('button');
+              aEditBtn.textContent = '수정';
+              aEditBtn.className = 'a-action-btn';
+              let aDelBtn = document.createElement('button');
+              aDelBtn.textContent = '삭제';
+              aDelBtn.className = 'a-action-btn';
+              aMeta.appendChild(aEditBtn);
+              aMeta.appendChild(aDelBtn);
+              // 답글 수정
+              aEditBtn.onclick = () => {
+                if (item.querySelector('.a-edit-box')) return;
+                let aEditBox = document.createElement('div');
+                aEditBox.className = 'a-edit-box';
+                aEditBox.innerHTML = `<input type="text" maxlength="100" value="${a.content.replace(/"/g,'&quot;')}"><button>저장</button><button>취소</button>`;
+                let input = aEditBox.querySelector('input');
+                let saveBtn = aEditBox.querySelector('button');
+                let cancelBtn = aEditBox.querySelectorAll('button')[1];
+                saveBtn.onclick = () => {
+                  let val = input.value.trim();
+                  if (!val) return;
+                  qUpdate(qRef(qdb, `questions/${qkey}/answers/${akey}`), { content: val });
+                };
+                cancelBtn.onclick = () => { aEditBox.remove(); };
+                item.insertBefore(aEditBox, item.children[1]);
+              };
+              // 답글 삭제
+              aDelBtn.onclick = () => {
+                if (confirm('삭제하시겠습니까?')) qRemove(qRef(qdb, `questions/${qkey}/answers/${akey}`));
+              };
+            }
+            item.appendChild(aMeta);
+            answerList.appendChild(item);
+          });
+        }
+        card.appendChild(answerList);
+        // 답글 입력폼
+        const answerForm = document.createElement('form');
+        answerForm.className = 'answer-form';
+        answerForm.innerHTML = `<input type="text" maxlength="100" placeholder="답글 달기 (최대 100자)" autocomplete="off"/><button type="submit">답글</button>`;
+        answerForm.onsubmit = e => {
+          e.preventDefault();
+          const input = answerForm.querySelector('input');
+          const val = input.value.trim();
+          if (!val) return;
+          const ansRef = qRef(qdb, `questions/${qkey}/answers`);
+          const newARef = qPush(ansRef);
+          qSet(newARef, { content: val, timestamp: Date.now(), nickname });
+          input.value = '';
+        };
+        card.appendChild(answerForm);
+        questionList.appendChild(card);
+      });
+    }
+
+    // 실시간 반영
+    let questionsCache = {};
+    function updateAndRender() { renderQuestions(questionsCache); }
+    onQChildAdded(questionsRef, snap => {
+      questionsCache[snap.key] = snap.val();
+      updateAndRender();
+    });
+    onQChildChanged(questionsRef, snap => {
+      questionsCache[snap.key] = snap.val();
+      updateAndRender();
+    });
+    onQChildRemoved(questionsRef, snap => {
+      delete questionsCache[snap.key];
+      updateAndRender();
+    });
+    // 최초 로딩
+    import { get as qGet, child as qChild } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    qGet(qRef(qdb)).then(snap => {
+      if (snap.exists() && snap.val().questions) {
+        questionsCache = snap.val().questions;
+        updateAndRender();
+      }
+    });
+    // ===== 질문 공간 끝 =====
+    // ...existing code...
   </script>
 </body>
 </html>
