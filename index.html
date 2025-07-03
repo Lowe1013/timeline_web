@@ -562,6 +562,19 @@
         <button id="order-check-btn" style="margin-top:16px;">정답 확인</button>
         <button id="to-year-quiz" style="margin-top:16px;">← 연도 맞추기 돌아가기</button>
       </div>
+      <div class="mini-game-page" id="direct-year-page">
+        <h2>연도 직접 입력 퀴즈</h2>
+        <div id="direct-year-progress" style="position:absolute;top:10px;right:20px;"></div>
+        <div id="direct-year-event" style="margin-bottom:10px;"></div>
+        <form id="direct-year-form" style="margin-bottom:10px;">
+          <input id="direct-year-input" type="number" placeholder="" style="font-size:1.1rem;padding:6px 12px;border-radius:6px;border:1px solid #bcdffb;width:120px;" autocomplete="off" />
+          <button type="submit" style="font-size:1.1rem;padding:6px 18px;border-radius:6px;background:#1da1f2;color:#fff;border:none;margin-left:8px;">확인</button>
+        </form>
+        <div id="direct-year-feedback" style="font-weight:bold;margin-bottom:10px;"></div>
+        <div id="direct-year-score" style="font-weight:bold;"></div>
+        <button id="direct-year-next" style="margin-top:16px;">다음</button>
+        <button id="to-year-quiz2" style="margin-top:16px;">← 연도 맞추기 돌아가기</button>
+      </div>
     </div>
   </div>
   <div id="timeline-container">
@@ -1006,14 +1019,91 @@
     const sliderInner = document.getElementById('mini-game-slider-inner');
     const yearQuizPage = document.getElementById('year-quiz-page');
     const orderGamePage = document.getElementById('order-game-page');
+    const directYearPage = document.getElementById('direct-year-page');
     const toOrderBtn = document.getElementById('to-order-game');
     const toYearQuizBtn = document.getElementById('to-year-quiz');
+    // 새 미니게임 버튼
+    const toDirectYearBtn = document.createElement('button');
+    toDirectYearBtn.textContent = '→ 연도 직접 입력 퀴즈로';
+    toDirectYearBtn.style.marginTop = '24px';
+    yearQuizPage.appendChild(toDirectYearBtn);
+    const toYearQuizBtn2 = document.getElementById('to-year-quiz2');
     function updateSlider() {
       sliderInner.style.transform = `translateX(-${currentMiniGame * 100}%)`;
     }
     toOrderBtn.onclick = () => { currentMiniGame = 1; updateSlider(); renderOrderGame(); };
     toYearQuizBtn.onclick = () => { currentMiniGame = 0; updateSlider(); };
+    toDirectYearBtn.onclick = () => { currentMiniGame = 2; updateSlider(); renderDirectYearGame(); };
+    if (toYearQuizBtn2) toYearQuizBtn2.onclick = () => { currentMiniGame = 0; updateSlider(); };
+
+    // 버튼의 화살표 방향을 실제 이동 방향과 맞춤
+    // 1. 연도 맞추기 → 사건 순서 배열로 (오른쪽)
+    toOrderBtn.textContent = '→ 사건 순서 배열로';
+    // 2. 사건 순서 배열 → 연도 맞추기 돌아가기 (왼쪽)
+    toYearQuizBtn.textContent = '← 연도 맞추기 돌아가기';
+    // 3. 연도 맞추기 → 연도 직접 입력 퀴즈로 (오른쪽)
+    toDirectYearBtn.textContent = '→ 연도 직접 입력 퀴즈로';
+    // 4. 연도 직접 입력 퀴즈 → 연도 맞추기 돌아가기 (왼쪽)
+    if (toYearQuizBtn2) toYearQuizBtn2.textContent = '← 연도 맞추기 돌아가기';
     updateSlider();
+    // ===== 연도 직접 입력 미니게임 =====
+    let directYearQuestions = [];
+    let directYearCurrent = 0;
+    let directYearScore = 0;
+    function renderDirectYearGame() {
+      // 문제 준비
+      const filteredEvents = timelineEvents.filter(e => e.year !== undefined && e.year !== null && e.year !== "");
+      if (filteredEvents.length === 0) {
+        document.getElementById("direct-year-event").textContent = "등록된 사건이 없습니다.";
+        document.getElementById("direct-year-form").style.display = "none";
+        document.getElementById("direct-year-feedback").textContent = "";
+        document.getElementById("direct-year-score").textContent = "";
+        document.getElementById("direct-year-progress").textContent = "";
+        document.getElementById("direct-year-next").style.display = "none";
+        return;
+      }
+      if (directYearQuestions.length === 0) {
+        // 중복 제거
+        const uniqueEvents = Array.from(new Map(filteredEvents.map(e => [e.event + e.year, e])).values());
+        directYearQuestions = shuffle([...uniqueEvents]);
+        directYearCurrent = 0;
+        directYearScore = 0;
+      }
+      if (directYearCurrent >= directYearQuestions.length) {
+        document.getElementById("direct-year-event").textContent = `게임 종료: 총 ${directYearQuestions.length}문제 중 ${directYearScore}문제 맞춤`;
+        document.getElementById("direct-year-form").style.display = "none";
+        document.getElementById("direct-year-feedback").textContent = "";
+        document.getElementById("direct-year-score").textContent = "";
+        document.getElementById("direct-year-progress").textContent = "";
+        document.getElementById("direct-year-next").style.display = "none";
+        return;
+      }
+      document.getElementById("direct-year-form").style.display = "flex";
+      document.getElementById("direct-year-next").style.display = "none";
+      document.getElementById("direct-year-event").textContent = `"${directYearQuestions[directYearCurrent].event}" 사건의 연도는?`;
+      document.getElementById("direct-year-input").value = "";
+      document.getElementById("direct-year-feedback").textContent = "";
+      document.getElementById("direct-year-score").textContent = `현재 점수: ${directYearScore}`;
+      document.getElementById("direct-year-progress").textContent = `문제: ${directYearCurrent+1} / ${directYearQuestions.length}`;
+    }
+    document.getElementById("direct-year-form").onsubmit = function(e) {
+      e.preventDefault();
+      const input = document.getElementById("direct-year-input");
+      const answer = directYearQuestions[directYearCurrent].year;
+      if (input.value.trim() === answer) {
+        document.getElementById("direct-year-feedback").textContent = "정답!";
+        directYearScore++;
+      } else {
+        document.getElementById("direct-year-feedback").textContent = `땡ㅋ 정답: ${answer}년`;
+      }
+      document.getElementById("direct-year-score").textContent = `현재 점수: ${directYearScore}`;
+      document.getElementById("direct-year-form").style.display = "none";
+      document.getElementById("direct-year-next").style.display = "inline-block";
+    };
+    document.getElementById("direct-year-next").onclick = function() {
+      directYearCurrent++;
+      renderDirectYearGame();
+    };
     // 사건 순서 배열 미니게임 (10문제, 4개 무작위, 드래그앤드롭, 정답확인)
     const orderGameOptions = document.getElementById('order-game-options');
     const orderFeedback = document.getElementById('order-feedback');
