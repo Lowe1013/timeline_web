@@ -1006,6 +1006,17 @@
         loadNextQuestion();
       }
     });
+    // 엔터로도 '다음' 버튼 동작 (연도 맞추기)
+    window.addEventListener("keydown", function(e) {
+      const page = document.getElementById("year-quiz-page");
+      const style = window.getComputedStyle(page);
+      if (style.display === "none" || style.visibility === "hidden") return;
+      if ((e.key === "Enter" || e.keyCode === 13)
+        && document.getElementById("start-game").offsetParent !== null
+        && document.activeElement.tagName !== 'BUTTON' && document.activeElement.tagName !== 'INPUT') {
+        document.getElementById("start-game").click();
+      }
+    });
 
     // 댓글 항목 렌더링 (댓글 삭제 기능 포함)
     onChildAdded(commentsRef, (snapshot) => {
@@ -1105,6 +1116,17 @@
       directYearCurrent++;
       renderDirectYearGame();
     };
+    // 엔터로도 '다음' 버튼 동작 (연도 직접 입력)
+    window.addEventListener("keydown", function(e) {
+      const page = document.getElementById("direct-year-page");
+      const style = window.getComputedStyle(page);
+      if (style.display === "none" || style.visibility === "hidden") return;
+      if ((e.key === "Enter" || e.keyCode === 13)
+        && document.getElementById("direct-year-next").offsetParent !== null
+        && document.activeElement.tagName !== 'BUTTON' && document.activeElement.tagName !== 'INPUT') {
+        document.getElementById("direct-year-next").click();
+      }
+    });
     // 사건 순서 배열 미니게임 (10문제, 4개 무작위, 드래그앤드롭, 정답확인)
     const orderGameOptions = document.getElementById('order-game-options');
     const orderFeedback = document.getElementById('order-feedback');
@@ -1342,6 +1364,18 @@
         }
       };
     };
+    // 엔터로도 '다음' 버튼 동작 (사건 순서 배열)
+    window.addEventListener("keydown", function(e) {
+      const page = document.getElementById("order-game-page");
+      const style = window.getComputedStyle(page);
+      if (style.display === "none" || style.visibility === "hidden") return;
+      const nextBtn = document.getElementById('order-next-btn');
+      if ((e.key === "Enter" || e.keyCode === 13)
+        && nextBtn && nextBtn.offsetParent !== null
+        && document.activeElement.tagName !== 'BUTTON' && document.activeElement.tagName !== 'INPUT') {
+        nextBtn.click();
+      }
+    });
     // 질문 공간 (트위터 스타일, 별도 페이지, 질문/답글)
     // ===== 질문 공간 (트위터 스타일 Q&A, 닉네임 시스템+수정/삭제+돌아가기) =====
     import { getDatabase as getQDB, ref as qRef, push as qPush, set as qSet, onChildAdded as onQChildAdded, onChildChanged as onQChildChanged, onChildRemoved as onQChildRemoved, update as qUpdate, remove as qRemove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
