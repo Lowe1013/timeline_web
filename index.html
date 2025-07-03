@@ -1089,8 +1089,9 @@
     document.getElementById("direct-year-form").onsubmit = function(e) {
       e.preventDefault();
       const input = document.getElementById("direct-year-input");
-      const answer = directYearQuestions[directYearCurrent].year;
-      if (input.value.trim() === answer) {
+      const answer = String(directYearQuestions[directYearCurrent].year).trim();
+      const userValue = String(input.value).trim();
+      if (userValue === answer) {
         document.getElementById("direct-year-feedback").textContent = "정답!";
         directYearScore++;
       } else {
