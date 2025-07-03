@@ -1039,8 +1039,16 @@
             indices.push(idx);
           }
         }
-        // 정답(연도순)
-        const answer = [...sample].sort((a, b) => a.year - b.year);
+        // 정답(연도+월 순)
+        const answer = [...sample].sort((a, b) => {
+          const yearA = parseInt(a.year, 10);
+          const yearB = parseInt(b.year, 10);
+          if (yearA !== yearB) return yearA - yearB;
+          // 월이 없으면 0으로 간주
+          const monthA = a.month ? parseInt(a.month, 10) : 0;
+          const monthB = b.month ? parseInt(b.month, 10) : 0;
+          return monthA - monthB;
+        });
         // 문제(섞기, 정답과 다를 때까지)
         let question = [...answer];
         let shuffleTries = 0;
