@@ -566,13 +566,19 @@
         <h2>연도 직접 입력 퀴즈</h2>
         <div id="direct-year-progress" style="position:absolute;top:10px;right:20px;"></div>
         <div id="direct-year-event" style="margin-bottom:10px;"></div>
-        <form id="direct-year-form" style="margin-bottom:10px;">
+        <div id="direct-year-start-buttons" style="margin-bottom:16px;">
+          <button id="direct-year-normal-btn">시작</button>
+          <button id="direct-year-speedrun-btn">스피드런</button>
+        </div>
+        <!-- 닉네임 입력 UI는 동적으로 direct-year-event에 렌더링됩니다. -->
+        <div id="speedrun-leaderboard" style="display:none;margin-bottom:10px;"></div>
+        <form id="direct-year-form" style="margin-bottom:10px;display:none;">
           <input id="direct-year-input" type="number" placeholder="" style="font-size:1.1rem;padding:6px 12px;border-radius:6px;border:1px solid #bcdffb;width:120px;" autocomplete="off" />
           <button type="submit" style="font-size:1.1rem;padding:6px 18px;border-radius:6px;background:#1da1f2;color:#fff;border:none;margin-left:8px;">확인</button>
         </form>
         <div id="direct-year-feedback" style="font-weight:bold;margin-bottom:10px;"></div>
         <div id="direct-year-score" style="font-weight:bold;"></div>
-        <button id="direct-year-next" style="margin-top:16px;">다음</button>
+        <button id="direct-year-next" style="margin-top:16px;display:none;">다음</button>
         <button id="to-year-quiz2" style="margin-top:16px;">← 연도 맞추기 돌아가기</button>
       </div>
     </div>
@@ -1061,6 +1067,17 @@
     let directYearQuestions = [];
     let directYearCurrent = 0;
     let directYearScore = 0;
+    function showDirectYearStartButtons() {
+      document.getElementById("direct-year-start-buttons").style.display = "block";
+      document.getElementById("direct-year-form").style.display = "none";
+      document.getElementById("direct-year-next").style.display = "none";
+      document.getElementById("direct-year-event").textContent = '';
+      document.getElementById("direct-year-feedback").textContent = '';
+      document.getElementById("direct-year-score").textContent = '';
+      document.getElementById("direct-year-progress").textContent = '';
+      document.getElementById("speedrun-leaderboard").style.display = 'none';
+    }
+
     function renderDirectYearGame() {
       // 문제 준비
       const filteredEvents = timelineEvents.filter(e => e.year !== undefined && e.year !== null && e.year !== "");
@@ -1071,14 +1088,12 @@
         document.getElementById("direct-year-score").textContent = "";
         document.getElementById("direct-year-progress").textContent = "";
         document.getElementById("direct-year-next").style.display = "none";
+        document.getElementById("direct-year-start-buttons").style.display = "none";
         return;
       }
       if (directYearQuestions.length === 0) {
-        // 중복 제거
-        const uniqueEvents = Array.from(new Map(filteredEvents.map(e => [e.event + e.year, e])).values());
-        directYearQuestions = shuffle([...uniqueEvents]);
-        directYearCurrent = 0;
-        directYearScore = 0;
+        showDirectYearStartButtons();
+        return;
       }
       if (directYearCurrent >= directYearQuestions.length) {
         document.getElementById("direct-year-event").textContent = `게임 종료: 총 ${directYearQuestions.length}문제 중 ${directYearScore}문제 맞춤`;
@@ -1087,17 +1102,177 @@
         document.getElementById("direct-year-score").textContent = "";
         document.getElementById("direct-year-progress").textContent = "";
         document.getElementById("direct-year-next").style.display = "none";
+        document.getElementById("direct-year-start-buttons").style.display = "block";
         return;
       }
       document.getElementById("direct-year-form").style.display = "flex";
       document.getElementById("direct-year-next").style.display = "none";
+      document.getElementById("direct-year-start-buttons").style.display = "none";
       document.getElementById("direct-year-event").textContent = `"${directYearQuestions[directYearCurrent].event}" 사건의 연도는?`;
       document.getElementById("direct-year-input").value = "";
       document.getElementById("direct-year-feedback").textContent = "";
       document.getElementById("direct-year-score").textContent = `현재 점수: ${directYearScore}`;
       document.getElementById("direct-year-progress").textContent = `문제: ${directYearCurrent+1} / ${directYearQuestions.length}`;
     }
+    // 시작/스피드런 버튼 이벤트
+    document.getElementById("direct-year-normal-btn").onclick = function() {
+      // 기존 방식 시작
+      const filteredEvents = timelineEvents.filter(e => e.year !== undefined && e.year !== null && e.year !== "");
+      const uniqueEvents = Array.from(new Map(filteredEvents.map(e => [e.event + e.year, e])).values());
+      directYearQuestions = shuffle([...uniqueEvents]);
+      directYearCurrent = 0;
+      directYearScore = 0;
+      renderDirectYearGame();
+    };
+
+
+    // 스피드런 관련 변수/함수
+    let speedrunActive = false;
+    let speedrunQuestions = [];
+    let speedrunCurrent = 0;
+    let speedrunStartTime = 0;
+    let speedrunEndTime = 0;
+    let speedrunNickname = '';
+    let speedrunTimerInterval = null;
+    const SPEEDRUN_COUNT = 20;
+    import { getDatabase as getSRDB, ref as srRef, set as srSet, get as srGet, child as srChild } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    const srdb = getSRDB();
+    const speedrunRef = srRef(srdb, 'speedrunRecords');
+    const speedrunLeaderboard = document.getElementById('speedrun-leaderboard');
+
+    document.getElementById("direct-year-speedrun-btn").onclick = function() {
+      // direct-year-event 영역에 닉네임 입력 UI + 포기 버튼 렌더링
+      document.getElementById("direct-year-form").style.display = "none";
+      document.getElementById("direct-year-next").style.display = "none";
+      document.getElementById("direct-year-start-buttons").style.display = "none";
+      document.getElementById("speedrun-leaderboard").style.display = "none";
+      let prevNick = localStorage.getItem('yunpyo_speedrun_nickname') || '';
+      let html = `<div style='margin-bottom:10px;'>스피드런 닉네임을 입력하세요 (최대 20자)</div>` +
+        `<input id='speedrun-nick-input' maxlength='20' style='font-size:1.1em;padding:6px 12px;border-radius:6px;border:1px solid #bcdffb;width:160px;' value='${prevNick.replace(/'/g, "&#39;")}' />` +
+        `<button id='speedrun-nick-confirm' style='margin-left:10px;font-size:1em;padding:6px 18px;border-radius:6px;background:#1da1f2;color:#fff;border:none;'>확인</button>` +
+        `<button id='speedrun-cancel-btn' style='margin-left:10px;font-size:1em;padding:6px 18px;border-radius:6px;background:#ccc;color:#333;border:none;'>포기</button>`;
+      document.getElementById("direct-year-event").innerHTML = html;
+      document.getElementById("direct-year-feedback").textContent = '';
+      document.getElementById("direct-year-score").textContent = '';
+      document.getElementById("direct-year-progress").textContent = '';
+      setTimeout(()=>{
+        document.getElementById('speedrun-nick-input').focus();
+        document.getElementById('speedrun-nick-confirm').onclick = function() {
+          const nick = document.getElementById('speedrun-nick-input').value.trim().slice(0,20);
+          if (!nick) { document.getElementById('speedrun-nick-input').focus(); return; }
+          localStorage.setItem('yunpyo_speedrun_nickname', nick);
+          speedrunNickname = nick;
+          startSpeedrun();
+        };
+        document.getElementById('speedrun-nick-input').addEventListener('keydown', function(e){
+          if (e.key === 'Enter') document.getElementById('speedrun-nick-confirm').click();
+        });
+        document.getElementById('speedrun-cancel-btn').onclick = function() {
+          showDirectYearStartButtons();
+        };
+      }, 50);
+    };
+
+    function startSpeedrun() {
+      const filteredEvents = timelineEvents.filter(e => e.year !== undefined && e.year !== null && e.year !== "");
+      if (filteredEvents.length < SPEEDRUN_COUNT) {
+        alert('타임라인에 사건이 20개 이상 필요합니다.');
+        showDirectYearStartButtons();
+        return;
+      }
+      const uniqueEvents = Array.from(new Map(filteredEvents.map(e => [e.event + e.year, e])).values());
+      speedrunQuestions = shuffle([...uniqueEvents]).slice(0, SPEEDRUN_COUNT);
+      speedrunCurrent = 0;
+      speedrunActive = true;
+      speedrunLeaderboard.style.display = 'none';
+      document.getElementById("direct-year-form").style.display = "flex";
+      document.getElementById("direct-year-next").style.display = "none";
+      document.getElementById("direct-year-start-buttons").style.display = "none";
+      // 포기 버튼 추가
+      document.getElementById("direct-year-event").innerHTML = `[스피드런] "${speedrunQuestions[0].event}" 사건의 연도는? <button id='speedrun-cancel-btn' style='margin-left:16px;font-size:0.98em;padding:4px 16px;border-radius:6px;background:#ccc;color:#333;border:none;'>포기</button>`;
+      document.getElementById("direct-year-input").value = "";
+      document.getElementById("direct-year-feedback").textContent = '';
+      document.getElementById("direct-year-score").textContent = `진행: 1 / ${SPEEDRUN_COUNT}`;
+      document.getElementById("direct-year-progress").textContent = '';
+      speedrunStartTime = Date.now();
+      speedrunEndTime = 0;
+      // 타이머 표시
+      if (speedrunTimerInterval) clearInterval(speedrunTimerInterval);
+      document.getElementById("direct-year-progress").textContent = '타이머: 0.00초';
+      speedrunTimerInterval = setInterval(() => {
+        if (!speedrunActive) return;
+        let elapsed = (Date.now() - speedrunStartTime) / 1000;
+        document.getElementById("direct-year-progress").textContent = `타이머: ${elapsed.toFixed(2)}초`;
+      }, 50);
+      // 포기 버튼 동작
+      document.getElementById('speedrun-cancel-btn').onclick = function() {
+        if (speedrunTimerInterval) clearInterval(speedrunTimerInterval);
+        speedrunActive = false;
+        showDirectYearStartButtons();
+      };
+    }
+
+    function renderSpeedrunLeaderboard(records, myNick, myTime) {
+      if (!records) { speedrunLeaderboard.style.display = 'none'; return; }
+      let arr = Object.entries(records).map(([nick, time]) => ({nick, time}));
+      arr = arr.filter(r => typeof r.time === 'number' && r.time > 0);
+      arr.sort((a,b) => a.time - b.time);
+      let html = '<b>스피드런 순위표(상위 10위)</b><br><table style="margin:0 auto;font-size:1.05em;">';
+      html += '<tr><th>순위</th><th>닉네임</th><th>기록(초)</th></tr>';
+      arr.slice(0,10).forEach((r,i) => {
+        html += `<tr${r.nick===myNick&&r.time===myTime?' style=\"color:#1da1f2;font-weight:bold;\"':''}><td>${i+1}</td><td>${r.nick}</td><td>${(r.time/1000).toFixed(2)}</td></tr>`;
+      });
+      html += '</table>';
+      speedrunLeaderboard.innerHTML = html;
+      speedrunLeaderboard.style.display = 'block';
+    }
     document.getElementById("direct-year-form").onsubmit = function(e) {
+      if (speedrunActive) {
+        e.preventDefault();
+        const input = document.getElementById("direct-year-input");
+        const answer = String(speedrunQuestions[speedrunCurrent].year).trim();
+        const userValue = String(input.value).trim();
+        if (userValue === answer) {
+          speedrunCurrent++;
+          if (speedrunCurrent >= SPEEDRUN_COUNT) {
+            speedrunEndTime = Date.now();
+            speedrunActive = false;
+            if (speedrunTimerInterval) clearInterval(speedrunTimerInterval);
+            const elapsed = (speedrunEndTime - speedrunStartTime) / 1000;
+            // 순위표 표시
+            srGet(speedrunRef).then(snap => {
+              let prev = snap.exists() && snap.val()[speedrunNickname];
+              if (!prev || elapsed*1000 < prev) {
+                srSet(srChild(speedrunRef, speedrunNickname), Math.floor(elapsed*1000));
+              }
+              srGet(speedrunRef).then(snap2 => {
+                renderSpeedrunLeaderboard(snap2.val(), speedrunNickname, Math.floor(elapsed*1000));
+              });
+            });
+            document.getElementById("direct-year-event").textContent = `[스피드런 종료] 기록: ${elapsed.toFixed(2)}초`;
+            document.getElementById("direct-year-form").style.display = "none";
+            document.getElementById("direct-year-feedback").textContent = '';
+            document.getElementById("direct-year-score").textContent = '';
+            document.getElementById("direct-year-progress").textContent = '';
+            // 순위표는 speedrunLeaderboard가 알아서 표시
+            document.getElementById("direct-year-start-buttons").style.display = "block";
+          } else {
+            // 포기 버튼 유지
+            document.getElementById("direct-year-event").innerHTML = `[스피드런] "${speedrunQuestions[speedrunCurrent].event}" 사건의 연도는? <button id='speedrun-cancel-btn' style='margin-left:16px;font-size:0.98em;padding:4px 16px;border-radius:6px;background:#ccc;color:#333;border:none;'>포기</button>`;
+            input.value = "";
+            document.getElementById("direct-year-feedback").textContent = '';
+            document.getElementById("direct-year-score").textContent = `진행: ${speedrunCurrent+1} / ${SPEEDRUN_COUNT}`;
+            document.getElementById('speedrun-cancel-btn').onclick = function() {
+              if (speedrunTimerInterval) clearInterval(speedrunTimerInterval);
+              speedrunActive = false;
+              showDirectYearStartButtons();
+            };
+          }
+        } else {
+          document.getElementById("direct-year-feedback").textContent = '오답! 다시 시도하세요.';
+        }
+        return;
+      }
       e.preventDefault();
       const input = document.getElementById("direct-year-input");
       const answer = String(directYearQuestions[directYearCurrent].year).trim();
@@ -1116,6 +1291,9 @@
       directYearCurrent++;
       renderDirectYearGame();
     };
+    // ===== 연도 직접 입력 미니게임 =====
+    // 페이지 진입 시 버튼만 보이게
+    showDirectYearStartButtons();
     // 엔터로도 '다음' 버튼 동작 (연도 직접 입력)
     window.addEventListener("keydown", function(e) {
       const page = document.getElementById("direct-year-page");
