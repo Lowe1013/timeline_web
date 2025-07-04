@@ -566,9 +566,13 @@
         <h2>연도 직접 입력 퀴즈</h2>
         <div id="direct-year-progress" style="position:absolute;top:10px;right:20px;"></div>
         <div id="direct-year-event" style="margin-bottom:10px;"></div>
-        <div id="direct-year-start-buttons" style="margin-bottom:16px;">
-          <button id="direct-year-normal-btn">시작</button>
-          <button id="direct-year-speedrun-btn">스피드런</button>
+        <div id="direct-year-start-buttons" style="margin-bottom:16px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
+          <div>
+            <button id="direct-year-normal-btn">시작</button>
+            <button id="direct-year-speedrun-btn">스피드런</button>
+          </div>
+          <div style="height:18px;"></div>
+          <button id="speedrun-leaderboard-btn" style="background:#fff;color:#1da1f2;border:2px solid #1da1f2;padding:7px 22px;border-radius:18px;font-size:1.05em;font-weight:bold;box-shadow:0 2px 8px rgba(29,161,242,0.08);margin-left:0;">🏆 스피드런 순위표</button>
         </div>
         <!-- 닉네임 입력 UI는 동적으로 direct-year-event에 렌더링됩니다. -->
         <div id="speedrun-leaderboard" style="display:none;margin-bottom:10px;"></div>
@@ -1076,6 +1080,26 @@
       document.getElementById("direct-year-score").textContent = '';
       document.getElementById("direct-year-progress").textContent = '';
       document.getElementById("speedrun-leaderboard").style.display = 'none';
+      // 순위표 버튼 이벤트 연결 (중복 방지)
+      const leaderboardBtn = document.getElementById('speedrun-leaderboard-btn');
+      if (leaderboardBtn && !leaderboardBtn._bound) {
+        leaderboardBtn._bound = true;
+        leaderboardBtn.onclick = function() {
+          // 순위표 불러오기
+          import('https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js').then(mod => {
+            const db = mod.getDatabase();
+            const ref = mod.ref(db, 'speedrunRecords');
+            mod.get(ref).then(snap => {
+              if (snap.exists()) {
+                renderSpeedrunLeaderboard(snap.val());
+              } else {
+                document.getElementById('speedrun-leaderboard').innerHTML = '<b>순위표 데이터가 없습니다.</b>';
+                document.getElementById('speedrun-leaderboard').style.display = 'block';
+              }
+            });
+          });
+        };
+      }
     }
 
     function renderDirectYearGame() {
@@ -1134,7 +1158,7 @@
     let speedrunEndTime = 0;
     let speedrunNickname = '';
     let speedrunTimerInterval = null;
-    const SPEEDRUN_COUNT = 20;
+    const SPEEDRUN_COUNT = 10;
     import { getDatabase as getSRDB, ref as srRef, set as srSet, get as srGet, child as srChild } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     const srdb = getSRDB();
     const speedrunRef = srRef(srdb, 'speedrunRecords');
