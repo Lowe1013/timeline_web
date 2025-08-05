@@ -41,6 +41,10 @@
     </select>
     <button type="submit">시작</button>
   </form>
+  <div id="thiefSelectorContainer" style="display:none; text-align:center; margin-bottom:10px;">
+    <label for="thiefSelector" style="font-size:1.1rem; color:#fff;">도둑 선택: </label>
+    <select id="thiefSelector" style="font-size:1.1rem; padding:4px 10px;"></select>
+  </div>
   <div id="distance"></div>
   <div id="arrow">
     <!-- SVG 화살표 -->
@@ -86,6 +90,7 @@
         document.getElementById("arrow").style.display = "block";
         document.getElementById("distance").style.display = "block";
         document.getElementById("requestPermission").style.display = "block";
+        document.getElementById("thiefSelectorContainer").style.display = "block";
         startPolice();
       } else {
         // 도둑 안내문구 표시
@@ -125,6 +130,7 @@
       });
     }
 
+    let selectedThiefId = null;
     function startPolice() {
       sendMyLocation();
       setInterval(sendMyLocation, 3000);
@@ -137,6 +143,13 @@
       // 모든 유저 위치 실시간 감시
       onValue(ref(db, 'users'), snapshot => {
         window.allUsers = snapshot.val() || {};
+        updateThiefSelector();
+        updateArrowAndDistance();
+      });
+
+      // 도둑 선택 이벤트
+      document.getElementById("thiefSelector").addEventListener("change", e => {
+        selectedThiefId = e.target.value;
         updateArrowAndDistance();
       });
 
@@ -155,6 +168,32 @@
           alert("기기 방향 감지 시작됨");
         }
       };
+    }
+
+    function updateThiefSelector() {
+      const selector = document.getElementById("thiefSelector");
+      const thieves = Object.entries(window.allUsers)
+        .filter(([id, u]) => u.role === "thief" && u.lat && u.lng);
+      // 현재 선택 유지
+      const prev = selector.value;
+      selector.innerHTML = "";
+      thieves.forEach(([id, u]) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = u.nickname || id;
+        selector.appendChild(opt);
+      });
+      // 선택 유지, 없으면 첫번째
+      if (thieves.length > 0) {
+        if (thieves.some(([id]) => id === prev)) {
+          selector.value = prev;
+        } else {
+          selector.value = thieves[0][0];
+        }
+        selectedThiefId = selector.value;
+      } else {
+        selectedThiefId = null;
+      }
     }
 
     function handleOrientation(event) {
@@ -196,27 +235,27 @@
         return;
       }
 
-      // 가장 가까운 도둑 찾기
-      let minDist = Infinity, nearest = null;
-      for (const [id, u] of thieves) {
-        const dist = getDistance(myPosition.latitude, myPosition.longitude, u.lat, u.lng);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = u;
-        }
+      // 선택된 도둑만 추적
+      let target = null;
+      if (selectedThiefId) {
+        target = window.allUsers[selectedThiefId];
+      }
+      // 만약 선택된 도둑이 없거나 위치 정보가 없으면 첫번째 도둑
+      if (!target || !target.lat || !target.lng) {
+        target = thieves[0][1];
       }
 
       // 거리 표시
-      document.getElementById("distance").innerText = `도둑까지 거리: ${minDist}m`;
+      const dist = getDistance(myPosition.latitude, myPosition.longitude, target.lat, target.lng);
+      document.getElementById("distance").innerText = `도둑까지 거리: ${dist}m`;
 
       // 방향 표시 (heading 보정: iOS/Android 모두 북쪽 기준, alpha=0이 북쪽)
       const bearing = getBearing(
         myPosition.latitude, myPosition.longitude,
-        nearest.lat, nearest.lng
+        target.lat, target.lng
       );
       // 일부 브라우저는 alpha가 시계방향, 일부는 반시계방향이므로, 두 방식 모두 시도
       let adjusted = (bearing - heading + 360) % 360;
-      // iOS Safari는 alpha가 반시계방향이므로, 오차가 크면 반대로도 시도
       if (Math.abs(adjusted - bearing) > 180) {
         adjusted = (bearing + heading) % 360;
       }
