@@ -54,9 +54,19 @@
     <button id="start">게임 시작</button>
   </div>
 
-  <div id="map"></div>
 
-  <!-- Firebase + 앱 로직 -->
+  <div id="arrow-container" style="display:none; text-align:center; margin-top:40px;">
+    <div style="font-size:1.2rem; margin-bottom:1rem;">도둑의 방향</div>
+    <div id="arrow" style="display:inline-block; transition: transform 0.3s;">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <polygon points="40,10 70,70 40,55 10,70" fill="#1976d2"/>
+      </svg>
+    </div>
+    <div id="distance" style="font-size:1.2rem; margin-top:1rem;"></div>
+  </div>
+
+
+  <!-- Firebase + 앱 로직 (지도 없이 방향/거리만 표시) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
@@ -66,12 +76,11 @@
       onValue
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-    let map, userMarker;
-    let markers = {};
     let userId = null;
     let username = null;
     let role = null;
     let db, usersRef;
+    let myLat = null, myLng = null;
 
     function initFirebase() {
       const firebaseConfig = {
@@ -83,51 +92,45 @@
         messagingSenderId: "756466741361",
         appId: "1:756466741361:web:02c489c252763a6d3eebd0"
       };
-
       const app = initializeApp(firebaseConfig);
       db = getDatabase(app);
       usersRef = ref(db, "users");
     }
 
-    function initMap(lat = 37.5665, lng = 126.9780) {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat, lng },
-        zoom: 15,
-      });
+    // 두 좌표간 거리(meter)
+    function getDistance(lat1, lng1, lat2, lng2) {
+      function toRad(deg) { return deg * Math.PI / 180; }
+      const R = 6371000; // m
+      const dLat = toRad(lat2 - lat1);
+      const dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return Math.round(R * c);
     }
 
-    function updateMarker(userId, data) {
-      if (!data.lat || !data.lng) return;
-
-      const position = { lat: data.lat, lng: data.lng };
-      if (markers[userId]) {
-        markers[userId].setPosition(position);
-      } else {
-        const color = data.role === "police" ? "blue" : "red";
-        const marker = new google.maps.Marker({
-          position,
-          map,
-          label: {
-            text: data.username,
-            color: color,
-            fontWeight: "bold",
-          },
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: color,
-            fillOpacity: 0.6,
-            strokeWeight: 1,
-            strokeColor: "white",
-          },
-        });
-        markers[userId] = marker;
-      }
+    // 두 좌표간 방위각(0~360deg, 북=0)
+    function getAngle(from, to) {
+      const toRad = deg => deg * Math.PI / 180;
+      const dLng = toRad(to.lng - from.lng);
+      const y = Math.sin(dLng) * Math.cos(toRad(to.lat));
+      const x = Math.cos(toRad(from.lat)) * Math.sin(toRad(to.lat)) -
+                Math.sin(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.cos(dLng);
+      const brng = Math.atan2(y, x);
+      return (brng * 180 / Math.PI + 360) % 360;
     }
 
-    function clearMarkers() {
-      Object.values(markers).forEach((marker) => marker.setMap(null));
-      markers = {};
+    function updateArrowAndDistance(thief, police) {
+      if (!thief || !police) return;
+      const angle = getAngle(police, thief);
+      const dist = getDistance(police.lat, police.lng, thief.lat, thief.lng);
+      const arrow = document.getElementById("arrow");
+      const distance = document.getElementById("distance");
+      arrow.style.transform = `rotate(${angle}deg)`;
+      distance.innerText = `도둑까지 거리: ${dist}m`;
+      arrow.style.display = "inline-block";
+      distance.style.display = "block";
     }
 
     function watchPositions() {
@@ -135,9 +138,10 @@
         alert("위치 정보가 지원되지 않는 기기입니다.");
         return;
       }
-
       function sendPosition(position) {
         const { latitude, longitude } = position.coords;
+        myLat = latitude;
+        myLng = longitude;
         set(ref(db, "users/" + userId), {
           username,
           role,
@@ -145,66 +149,59 @@
           lng: longitude,
           timestamp: Date.now(),
         });
-        if (!userMarker) {
-          userMarker = new google.maps.Marker({
-            position: { lat: latitude, lng: longitude },
-            map,
-            label: {
-              text: username + " (나)",
-              color: "black",
-              fontWeight: "bold",
-            },
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 12,
-              fillColor: "green",
-              fillOpacity: 0.8,
-              strokeWeight: 2,
-              strokeColor: "white",
-            },
-          });
-          map.setCenter({ lat: latitude, lng: longitude });
-        } else {
-          userMarker.setPosition({ lat: latitude, lng: longitude });
-        }
       }
-
       navigator.geolocation.getCurrentPosition(sendPosition);
       setInterval(() => {
         navigator.geolocation.getCurrentPosition(sendPosition);
-      }, 3 * 60 * 1000);
+      }, 3 * 1000); // 3초마다 갱신
     }
 
     function startGame() {
       username = document.getElementById("username").value.trim();
       role = document.getElementById("role").value;
-
       if (!username) {
         alert("닉네임을 입력하세요.");
         return;
       }
-
       userId = username + "_" + Date.now();
-
       document.getElementById("form").style.display = "none";
-
-      initMap();
-
+      document.getElementById("map").style.display = "none";
+      document.getElementById("arrow-container").style.display = "block";
       watchPositions();
-
       onValue(usersRef, (snapshot) => {
-        const users = snapshot.val();
-        clearMarkers();
-
-        for (const [uid, data] of Object.entries(users || {})) {
-          updateMarker(uid, data);
+        const users = snapshot.val() || {};
+        if (role === "police") {
+          // 내 위치
+          const myData = users[userId];
+          // 모든 도둑 중 가장 가까운 도둑 찾기
+          let minDist = Infinity, nearestThief = null;
+          for (const [uid, data] of Object.entries(users)) {
+            if (data.role === "thief" && typeof data.lat === "number" && typeof data.lng === "number") {
+              const dist = myData && typeof myData.lat === "number" && typeof myData.lng === "number"
+                ? getDistance(myData.lat, myData.lng, data.lat, data.lng)
+                : Infinity;
+              if (dist < minDist) {
+                minDist = dist;
+                nearestThief = data;
+              }
+            }
+          }
+          if (myData && nearestThief) {
+            updateArrowAndDistance(nearestThief, myData);
+          } else {
+            document.getElementById("arrow").style.display = "none";
+            document.getElementById("distance").style.display = "none";
+          }
+        } else {
+          // 도둑은 화살표/거리 안보임
+          document.getElementById("arrow").style.display = "none";
+          document.getElementById("distance").style.display = "none";
         }
       });
     }
 
     window.addEventListener("load", () => {
       initFirebase();
-
       document.getElementById("start").addEventListener("click", startGame);
     });
 
