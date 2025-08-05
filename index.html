@@ -81,13 +81,25 @@
 
       document.getElementById("roleForm").style.display = "none";
 
-      // 도둑: 위치만 전송, 경찰: 화살표/거리 UI
+      // 도둑: 안내문구/위치전송, 경찰: 화살표/거리 UI
       if (myRole === "police") {
         document.getElementById("arrow").style.display = "block";
         document.getElementById("distance").style.display = "block";
         document.getElementById("requestPermission").style.display = "block";
         startPolice();
       } else {
+        // 도둑 안내문구 표시
+        const thiefMsg = document.createElement("div");
+        thiefMsg.style.fontSize = "2rem";
+        thiefMsg.style.margin = "40px 0 10px 0";
+        thiefMsg.style.textAlign = "center";
+        thiefMsg.innerText = "도망치세요!";
+        document.body.appendChild(thiefMsg);
+        const thiefSub = document.createElement("div");
+        thiefSub.style.fontSize = "1.1rem";
+        thiefSub.style.textAlign = "center";
+        thiefSub.innerText = "위치 정보가 30초마다 전송됩니다";
+        document.body.appendChild(thiefSub);
         startThief();
       }
     };
@@ -106,10 +118,10 @@
 
     function startThief() {
       sendMyLocation();
-      setInterval(sendMyLocation, 3000);
+      setInterval(sendMyLocation, 30000); // 30초마다 전송
       navigator.geolocation.watchPosition(pos => {
         myPosition = pos.coords;
-        sendMyLocation();
+        // 30초마다만 전송, watchPosition에서는 전송하지 않음
       });
     }
 
@@ -197,12 +209,17 @@
       // 거리 표시
       document.getElementById("distance").innerText = `도둑까지 거리: ${minDist}m`;
 
-      // 방향 표시
+      // 방향 표시 (heading 보정: iOS/Android 모두 북쪽 기준, alpha=0이 북쪽)
       const bearing = getBearing(
         myPosition.latitude, myPosition.longitude,
         nearest.lat, nearest.lng
       );
-      const adjusted = (bearing - heading + 360) % 360;
+      // 일부 브라우저는 alpha가 시계방향, 일부는 반시계방향이므로, 두 방식 모두 시도
+      let adjusted = (bearing - heading + 360) % 360;
+      // iOS Safari는 alpha가 반시계방향이므로, 오차가 크면 반대로도 시도
+      if (Math.abs(adjusted - bearing) > 180) {
+        adjusted = (bearing + heading) % 360;
+      }
       document.getElementById("arrow").style.transform = `rotate(${adjusted}deg)`;
       document.getElementById("arrow").style.opacity = 1;
     }
