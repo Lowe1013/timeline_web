@@ -1,267 +1,242 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>경찰/도둑 위치 추적</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0; background: #111; color: white; font-family: sans-serif;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
-    }
-    #arrow {
-      width: 100px; height: 100px;
-      margin: 30px auto 10px auto;
-      transition: transform 0.5s;
-      display: none;
-    }
-    #distance {
-      font-size: 1.5rem;
-      margin-bottom: 20px;
-      display: none;
-    }
-    #roleForm {
-      margin-top: 40px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: center;
-    }
-    button {
-      padding: 10px 20px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>그럼 무엇을 사랑이라 하리</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-family:'Nanum Myeongjo',serif;
+    background:#1d0d10;
+    overflow:hidden;
+    color:white;
+}
+
+.bg{
+    position:fixed;
+    inset:-30%;
+    background:
+    radial-gradient(circle at 20% 20%, #ff7f7f 0%, transparent 35%),
+    radial-gradient(circle at 80% 20%, #d45151 0%, transparent 35%),
+    radial-gradient(circle at 70% 70%, #8e2336 0%, transparent 40%),
+    radial-gradient(circle at 25% 75%, #ffb6a1 0%, transparent 35%);
+    filter:blur(120px);
+    animation:flow 18s ease-in-out infinite alternate;
+}
+
+@keyframes flow{
+0%{transform:translate(-4%,-3%) scale(1)}
+50%{transform:translate(5%,3%) scale(1.15)}
+100%{transform:translate(-2%,5%) scale(1.05)}
+}
+
+.container{
+    width:min(92vw,760px);
+    background:rgba(255,255,255,.08);
+    backdrop-filter:blur(24px);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:34px;
+    padding:56px;
+    position:relative;
+    z-index:2;
+    box-shadow:0 30px 80px rgba(0,0,0,.35);
+}
+
+.fade{
+    animation:fade .55s ease;
+}
+
+@keyframes fade{
+from{opacity:0;transform:translateY(15px)}
+to{opacity:1;transform:translateY(0)}
+}
+
+.small{
+    letter-spacing:3px;
+    color:#ffd4ca;
+    font-size:12px;
+    margin-bottom:18px;
+}
+
+.question{
+    font-size:34px;
+    line-height:1.7;
+    margin-bottom:38px;
+}
+
+.option{
+    padding:20px;
+    border-radius:18px;
+    margin-bottom:12px;
+    cursor:pointer;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.08);
+    transition:.3s;
+}
+
+.option:hover{
+    transform:translateY(-3px);
+    background:rgba(255,255,255,.12);
+}
+
+.option.selected{
+    background:rgba(255,180,170,.18);
+    transform:scale(1.02);
+}
+
+.progress{
+    margin-top:22px;
+    color:#ffd4ca;
+}
+
+.poem-title{
+    text-align:center;
+    font-size:42px;
+    margin-bottom:40px;
+}
+
+.poem{
+    white-space:pre-wrap;
+    line-height:2.2;
+    font-size:21px;
+}
+
+.btn{
+    margin-top:36px;
+    border:none;
+    border-radius:999px;
+    padding:14px 28px;
+    background:#c56d61;
+    color:white;
+    cursor:pointer;
+    font-family:inherit;
+}
+</style>
 </head>
 <body>
-  <form id="roleForm">
-    <input id="userId" placeholder="닉네임(영문)" required>
-    <select id="role">
-      <option value="police">경찰</option>
-      <option value="thief">도둑</option>
-    </select>
-    <button type="submit">시작</button>
-  </form>
-  <div id="thiefSelectorContainer" style="display:none; text-align:center; margin-bottom:10px;">
-    <label for="thiefSelector" style="font-size:1.1rem; color:#fff;">도둑 선택: </label>
-    <select id="thiefSelector" style="font-size:1.1rem; padding:4px 10px;"></select>
-  </div>
-  <div id="distance"></div>
-  <div id="arrow">
-    <!-- SVG 화살표 -->
-    <svg width="100" height="100" viewBox="0 0 100 100">
-      <polygon points="50,10 90,90 50,70 10,90" fill="#00bfff"/>
-    </svg>
-  </div>
-  <button id="requestPermission" style="display:none;">기기 방향 권한 요청</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+<div class="bg"></div>
+<div id="app" class="container"></div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAVPD6hJVl4vqJac24cLzI-B3ToGLKinfI",
-      authDomain: "waterdragon-499c9.firebaseapp.com",
-      databaseURL: "https://waterdragon-499c9-default-rtdb.firebaseio.com",
-      projectId: "waterdragon-499c9",
-      storageBucket: "waterdragon-499c9.appspot.com",
-      messagingSenderId: "756466741361",
-      appId: "1:756466741361:web:02c489c252763a6d3eebd0",
-      measurementId: "G-NTWZSEJBWZ"
-    };
+<script>
+const questions=[
+"당신은 누군가를 잃어본 적이 있는가",
+"당신은 사랑이 아픔을 동반한다고 생각하는가",
+"당신은 사랑이 기다림이라고 생각하는가",
+"당신은 사랑을 믿는가"
+];
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const options=["매우 그렇다","그렇다","그렇지 않다","매우 그렇지 않다"];
 
-    let myId, myRole, myRef;
-    let myPosition = null;
-    let heading = 0;
+const stanzas=[
+[
+"떠난 사람의 이름은\n오래도록 마음의 가장 밝은 곳에 남는다",
+"문득 스치는 얼굴 하나가\n하루의 방향을 바꾸곤 한다",
+"나는 아직 이별보다\n만남의 순간을 더 많이 기억한다",
+"잃어본 적 없는 마음은\n바람보다 먼저 앞을 향해 걷는다"
+],
+[
+"사랑은 때때로 상처를 남기지만\n그 흉터 또한 한때의 온기였다",
+"아픔은 사랑의 그림자처럼\n가까이 있으나 전부는 아니다",
+"사랑은 오히려 삶을 가볍게 하는\n작은 빛에 더 가깝다",
+"사랑은 상처가 아니라\n세상을 바라보는 방식이다"
+],
+[
+"오지 않을 발자국 소리에도\n귀를 기울여 본 적이 있다",
+"기다림은 사랑이 남긴\n가장 긴 문장일지도 모른다",
+"모든 사랑이 기다림을 품는 것은 아니다",
+"기다리지 않는 마음에도\n사랑은 조용히 찾아온다"
+],
+[
+"그래서 사랑은 끝내\n다시 손을 내미는 일이다",
+"그래서 사랑은 사라질 것을 알면서도\n곁을 내어주는 일이다",
+"그래서 사랑은 설명보다\n이해에 가까운 일이다",
+"그래서 사랑은 끝내 이름 붙일 수 없는 것을\n소중히 여기는 일이다"
+]
+];
 
-    document.getElementById("roleForm").onsubmit = async e => {
-      e.preventDefault();
-      myId = document.getElementById("userId").value.trim();
-      myRole = document.getElementById("role").value;
-      if (!myId) return alert("닉네임을 입력하세요.");
-      myRef = ref(db, 'users/' + myId);
+let current=0;
+let answers=[];
+const app=document.getElementById("app");
 
-      document.getElementById("roleForm").style.display = "none";
+function render(){
+app.className="container fade";
+app.innerHTML=`
+<div class="small">QUESTION ${current+1} OF 4</div>
+<div class="question">${questions[current]}</div>
+<div id="opts"></div>
+<div class="progress">${current+1} / 4</div>
+`;
 
-      // 도둑: 안내문구/위치전송, 경찰: 화살표/거리 UI
-      if (myRole === "police") {
-        document.getElementById("arrow").style.display = "block";
-        document.getElementById("distance").style.display = "block";
-        document.getElementById("requestPermission").style.display = "block";
-        document.getElementById("thiefSelectorContainer").style.display = "block";
-        startPolice();
-      } else {
-        // 도둑 안내문구 표시
-        const thiefMsg = document.createElement("div");
-        thiefMsg.style.fontSize = "2rem";
-        thiefMsg.style.margin = "40px 0 10px 0";
-        thiefMsg.style.textAlign = "center";
-        thiefMsg.innerText = "도망치세요!";
-        document.body.appendChild(thiefMsg);
-        const thiefSub = document.createElement("div");
-        thiefSub.style.fontSize = "1.1rem";
-        thiefSub.style.textAlign = "center";
-        thiefSub.innerText = "위치 정보가 30초마다 전송됩니다";
-        document.body.appendChild(thiefSub);
-        startThief();
-      }
-    };
+const opts=document.getElementById("opts");
 
-    function sendMyLocation() {
-      if (!myRef) return;
-      navigator.geolocation.getCurrentPosition(pos => {
-        set(myRef, {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          role: myRole,
-          timestamp: Date.now()
-        });
-      });
-    }
+options.forEach((t,i)=>{
+const d=document.createElement("div");
+d.className="option";
+d.textContent=t;
 
-    function startThief() {
-      sendMyLocation();
-      setInterval(sendMyLocation, 30000); // 30초마다 전송
-      navigator.geolocation.watchPosition(pos => {
-        myPosition = pos.coords;
-        // 30초마다만 전송, watchPosition에서는 전송하지 않음
-      });
-    }
+d.onclick=()=>{
+d.classList.add("selected");
 
-    let selectedThiefId = null;
-    function startPolice() {
-      sendMyLocation();
-      setInterval(sendMyLocation, 3000);
-      navigator.geolocation.watchPosition(pos => {
-        myPosition = pos.coords;
-        sendMyLocation();
-        updateArrowAndDistance();
-      });
+setTimeout(()=>{
+answers[current]=i;
+current++;
 
-      // 모든 유저 위치 실시간 감시
-      onValue(ref(db, 'users'), snapshot => {
-        window.allUsers = snapshot.val() || {};
-        updateThiefSelector();
-        updateArrowAndDistance();
-      });
+if(current<questions.length){
+render();
+}else{
+showPoem();
+}
+},300);
+};
 
-      // 도둑 선택 이벤트
-      document.getElementById("thiefSelector").addEventListener("change", e => {
-        selectedThiefId = e.target.value;
-        updateArrowAndDistance();
-      });
+opts.appendChild(d);
+});
+}
 
-      // 방향 센서
-      document.getElementById("requestPermission").onclick = () => {
-        if (typeof DeviceOrientationEvent !== 'undefined' &&
-            typeof DeviceOrientationEvent.requestPermission === 'function') {
-          DeviceOrientationEvent.requestPermission().then(response => {
-            if (response === 'granted') {
-              window.addEventListener('deviceorientation', handleOrientation);
-              alert("기기 방향 감지 허용됨");
-            }
-          }).catch(console.error);
-        } else {
-          window.addEventListener('deviceorientation', handleOrientation);
-          alert("기기 방향 감지 시작됨");
-        }
-      };
-    }
+function showPoem(){
+let poem="";
+for(let i=0;i<4;i++){
+poem+=stanzas[i][answers[i]]+"\n\n";
+}
 
-    function updateThiefSelector() {
-      const selector = document.getElementById("thiefSelector");
-      const thieves = Object.entries(window.allUsers)
-        .filter(([id, u]) => u.role === "thief" && u.lat && u.lng);
-      // 현재 선택 유지
-      const prev = selector.value;
-      selector.innerHTML = "";
-      thieves.forEach(([id, u]) => {
-        const opt = document.createElement("option");
-        opt.value = id;
-        opt.textContent = u.nickname || id;
-        selector.appendChild(opt);
-      });
-      // 선택 유지, 없으면 첫번째
-      if (thieves.length > 0) {
-        if (thieves.some(([id]) => id === prev)) {
-          selector.value = prev;
-        } else {
-          selector.value = thieves[0][0];
-        }
-        selectedThiefId = selector.value;
-      } else {
-        selectedThiefId = null;
-      }
-    }
+app.innerHTML=`
+<div class="poem-title">그럼 무엇을 사랑이라 하리</div>
+<div id="poem" class="poem"></div>
+<center><button class="btn" onclick="restart()">다시 쓰기</button></center>
+`;
 
-    function handleOrientation(event) {
-      heading = event.alpha ?? 0;
-      updateArrowAndDistance();
-    }
+type(poem,document.getElementById("poem"));
+}
 
-    function getDistance(lat1, lon1, lat2, lon2) {
-      // Haversine formula
-      const R = 6371000;
-      const toRad = deg => deg * Math.PI / 180;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2) ** 2 +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon/2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return Math.round(R * c);
-    }
+function type(text,el){
+let i=0;
+const timer=setInterval(()=>{
+if(i>=text.length){clearInterval(timer);return;}
+el.innerHTML+=(text[i]==="\n"?"<br>":text[i]);
+i++;
+},20);
+}
 
-    function getBearing(lat1, lon1, lat2, lon2) {
-      const toRad = deg => deg * Math.PI / 180;
-      const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
-      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
-      const bearing = Math.atan2(y, x);
-      return (bearing * 180 / Math.PI + 360) % 360;
-    }
+function restart(){
+current=0;
+answers=[];
+render();
+}
 
-    function updateArrowAndDistance() {
-      if (!myPosition || !window.allUsers) return;
-      // 내 자신 제외, 도둑만 필터
-      const thieves = Object.entries(window.allUsers)
-        .filter(([id, u]) => u.role === "thief" && id !== myId && u.lat && u.lng);
+render();
+</script>
 
-      if (thieves.length === 0) {
-        document.getElementById("distance").innerText = "주변 도둑 없음";
-        document.getElementById("arrow").style.opacity = 0.3;
-        return;
-      }
-
-      // 선택된 도둑만 추적
-      let target = null;
-      if (selectedThiefId) {
-        target = window.allUsers[selectedThiefId];
-      }
-      // 만약 선택된 도둑이 없거나 위치 정보가 없으면 첫번째 도둑
-      if (!target || !target.lat || !target.lng) {
-        target = thieves[0][1];
-      }
-
-      // 거리 표시
-      const dist = getDistance(myPosition.latitude, myPosition.longitude, target.lat, target.lng);
-      document.getElementById("distance").innerText = `도둑까지 거리: ${dist}m`;
-
-      // 방향 표시 (heading 보정: iOS/Android 모두 북쪽 기준, alpha=0이 북쪽)
-      const bearing = getBearing(
-        myPosition.latitude, myPosition.longitude,
-        target.lat, target.lng
-      );
-      // 일부 브라우저는 alpha가 시계방향, 일부는 반시계방향이므로, 두 방식 모두 시도
-      let adjusted = (bearing - heading + 360) % 360;
-      if (Math.abs(adjusted - bearing) > 180) {
-        adjusted = (bearing + heading) % 360;
-      }
-      document.getElementById("arrow").style.transform = `rotate(${adjusted}deg)`;
-      document.getElementById("arrow").style.opacity = 1;
-    }
-  </script>
 </body>
 </html>
